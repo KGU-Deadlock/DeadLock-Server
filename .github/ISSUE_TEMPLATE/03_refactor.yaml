@@ -1,0 +1,38 @@
+name: ♻️ Refactoring (Tech Debt)
+description: 아키텍처 개선, 성능 튜닝, 레거시 코드 정리. (기능 변경 없음)
+title: "[REFACTOR] "
+labels: ["refactoring"]
+body:
+  - type: dropdown
+    id: type
+    attributes:
+      label: 🎯 Refactoring Type
+      options:
+        - 🏗 Architecture (의존성 격리 / 모듈 분리)
+        - 🚀 Performance (N+1 문제 해결 / 인덱싱 / 캐싱)
+        - 🧹 Clean Code (가독성 개선 / 중복 제거)
+        - 🧪 Test Coverage (테스트 보강)
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: ⚠️ Problem Context (AS-IS)
+      description: 현재 코드가 가진 구조적 위험이나 성능 병목을 기술적으로 설명하세요.
+      placeholder: |
+        OrderService가 MemberRepository를 직접 참조하고 있어 강결합 상태임.
+        추후 DB 분리 시 컴파일 에러 발생 예정.
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: ✨ Technical Solution (TO-BE)
+      description: 개선 방향. 구체적인 디자인 패턴이나 적용할 기술을 명시하세요.
+      placeholder: |
+        - MemberModule에 `MemberValidator` 인터페이스 정의
+        - OrderModule에서는 인터페이스만 의존하도록 `Facade Pattern` 적용
+    validations:
+      required: true
