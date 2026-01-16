@@ -1,0 +1,89 @@
+name: 🚀 API Implementation (구현 명세)
+description: 확정된 API 설계를 바탕으로 구현 작업을 진행합니다.
+title: "[FEAT]"
+labels: ["enhancement", "api"]
+body:
+  - type: dropdown
+    id: method
+    attributes:
+      label: HTTP Method
+      options:
+        - GET
+        - POST
+        - PUT
+        - PATCH
+        - DELETE
+    validations:
+      required: true
+
+  - type: input
+    id: uri
+    attributes:
+      label: Endpoint URI
+      placeholder: "/api/v1/members/signup"
+    validations:
+      required: true
+
+  - type: textarea
+    id: request
+    attributes:
+      label: Request Spec (Body/Params)
+      description: 요청으로 받을 데이터 형식 (JSON or Params)
+      render: json
+      placeholder: |
+        {
+          "email": "user@example.com",
+          "password": "secure_password",
+          "name": "Hong Gil Dong"
+        }
+    validations:
+      required: true
+
+  - type: textarea
+    id: response
+    attributes:
+      label: Response Spec (Success)
+      description: 성공 시 반환할 데이터 형식 (200 OK)
+      render: json
+      placeholder: |
+        {
+          "memberId": 12345,
+          "email": "user@example.com"
+        }
+    validations:
+      required: true
+
+  - type: textarea
+    id: errors
+    attributes:
+      label: Exception Scenarios
+      description: 발생 가능한 주요 예외 및 상태 코드
+      placeholder: |
+        - 400 Bad Request: 이메일 형식이 잘못됨
+        - 409 Conflict: 이미 존재하는 이메일
+    validations:
+      required: false
+
+  - type: textarea
+    id: tasks
+    attributes:
+      label: ✅ Implementation Tasks
+      description: 구현해야 할 세부 작업
+      placeholder: |
+        - [ ] Controller 및 DTO 정의
+        - [ ] Service 비즈니스 로직 구현
+        - [ ] 테스트 코드 (Unit/Integration) 작성
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 📝 Implementation Notes / Context
+      description: |
+        구현 시 참고할 특이사항, 비즈니스 로직 제약, Figma/Wiki 링크 등을 자유롭게 작성하세요.
+      placeholder: |
+        - 회원 가입 시 이메일 중복 체크 로직은 기존 MemberValidator 재사용 필수.
+        - 기획서 링크: https://figma.com/...
+    validations:
+      required: false
