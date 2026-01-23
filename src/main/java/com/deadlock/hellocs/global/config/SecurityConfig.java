@@ -8,6 +8,8 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.annotation.web.configurers.RequestCacheConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -26,35 +28,45 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-  @Bean
-  public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-    return http.build();
-  }
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        return http.build();
+    }
 
-  @Bean
-  Customizer<HttpSecurity> exceptionHandler(){
-      return http -> http.exceptionHandling(ex -> ex
-              .authenticationEntryPoint((req, res, ex1) -> {
-                  ErrorStatus errorStatus = ErrorStatus._UNAUTHORIZED;
-                  res.setStatus(errorStatus.getReasonHttpStatus().getHttpStatus().value());
-                  res.setContentType("application/json;charset=UTF-8");
-                  try (PrintWriter w = res.getWriter()) {
-                      w.write(String.format(
-                              "{\"isSuccess\":false,\"code\":\"%s\",\"message\":\"%s\",\"data\":null}",
-                              errorStatus.getCode(),
-                              errorStatus.getMessage()));
-                  }
-              })
-              .accessDeniedHandler((req, res, ex2) -> {
-                  ErrorStatus errorStatus = ErrorStatus._FORBIDDEN;
-                  res.setStatus(errorStatus.getReasonHttpStatus().getHttpStatus().value());
-                  res.setContentType("application/json;charset=UTF-8");
-                  try (PrintWriter w = res.getWriter()) {
-                      w.write(String.format(
-                              "{\"isSuccess\":false,\"code\":\"%s\",\"message\":\"%s\",\"data\":null}",
-                              errorStatus.getCode(),
-                              errorStatus.getMessage()));
-                  }
-              }));
-  }
+    @Bean
+    Customizer<HttpSecurity> defaultRestApiSetting(){
+        return http -> http
+                .httpBasic(AbstractHttpConfigurer::disable)
+                .csrf(AbstractHttpConfigurer::disable)
+                .formLogin(AbstractHttpConfigurer::disable)
+                .logout(AbstractHttpConfigurer::disable)
+                .requestCache(RequestCacheConfigurer::disable);
+    }
+
+    @Bean
+    Customizer<HttpSecurity> exceptionHandler(){
+        return http -> http.exceptionHandling(ex -> ex
+                .authenticationEntryPoint((req, res, ex1) -> {
+                    ErrorStatus errorStatus = ErrorStatus._UNAUTHORIZED;
+                    res.setStatus(errorStatus.getReasonHttpStatus().getHttpStatus().value());
+                    res.setContentType("application/json;charset=UTF-8");
+                    try (PrintWriter w = res.getWriter()) {
+                        w.write(String.format(
+                                "{\"isSuccess\":false,\"code\":\"%s\",\"message\":\"%s\",\"data\":null}",
+                                errorStatus.getCode(),
+                                errorStatus.getMessage()));
+                    }
+                })
+                .accessDeniedHandler((req, res, ex2) -> {
+                    ErrorStatus errorStatus = ErrorStatus._FORBIDDEN;
+                    res.setStatus(errorStatus.getReasonHttpStatus().getHttpStatus().value());
+                    res.setContentType("application/json;charset=UTF-8");
+                    try (PrintWriter w = res.getWriter()) {
+                        w.write(String.format(
+                                "{\"isSuccess\":false,\"code\":\"%s\",\"message\":\"%s\",\"data\":null}",
+                                errorStatus.getCode(),
+                                errorStatus.getMessage()));
+                    }
+                }));
+    }
 }
