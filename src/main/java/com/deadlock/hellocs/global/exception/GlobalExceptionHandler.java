@@ -39,12 +39,6 @@ public class GlobalExceptionHandler {
             .body(ApiResponse.onFailure(ErrorStatus._USER_NOT_FOUND, null));
       }
 
-      if (message.contains("이미 속한 가족이 있습니다")) {
-        log.warn("Already in family: {}", message);
-        return ResponseEntity
-            .status(ErrorStatus._ALREADY_IN_FAMILY.getReasonHttpStatus().getHttpStatus())
-            .body(ApiResponse.onFailure(ErrorStatus._ALREADY_IN_FAMILY, null));
-      }
     }
 
     // 기본값: 500 Internal Server Error
