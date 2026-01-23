@@ -28,32 +28,33 @@ public class SecurityConfig {
 
   @Bean
   public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-    http
-
-        .exceptionHandling(ex -> ex
-            .authenticationEntryPoint((req, res, ex1) -> {
-              ErrorStatus errorStatus = ErrorStatus._UNAUTHORIZED;
-              res.setStatus(errorStatus.getReasonHttpStatus().getHttpStatus().value());
-              res.setContentType("application/json;charset=UTF-8");
-              try (PrintWriter w = res.getWriter()) {
-                w.write(String.format(
-                    "{\"isSuccess\":false,\"code\":\"%s\",\"message\":\"%s\",\"data\":null}",
-                    errorStatus.getCode(),
-                    errorStatus.getMessage()));
-              }
-            })
-            .accessDeniedHandler((req, res, ex2) -> {
-              ErrorStatus errorStatus = ErrorStatus._FORBIDDEN;
-              res.setStatus(errorStatus.getReasonHttpStatus().getHttpStatus().value());
-              res.setContentType("application/json;charset=UTF-8");
-              try (PrintWriter w = res.getWriter()) {
-                w.write(String.format(
-                    "{\"isSuccess\":false,\"code\":\"%s\",\"message\":\"%s\",\"data\":null}",
-                    errorStatus.getCode(),
-                    errorStatus.getMessage()));
-              }
-            }));
-
     return http.build();
+  }
+
+  @Bean
+  Customizer<HttpSecurity> exceptionHandler(){
+      return http -> http.exceptionHandling(ex -> ex
+              .authenticationEntryPoint((req, res, ex1) -> {
+                  ErrorStatus errorStatus = ErrorStatus._UNAUTHORIZED;
+                  res.setStatus(errorStatus.getReasonHttpStatus().getHttpStatus().value());
+                  res.setContentType("application/json;charset=UTF-8");
+                  try (PrintWriter w = res.getWriter()) {
+                      w.write(String.format(
+                              "{\"isSuccess\":false,\"code\":\"%s\",\"message\":\"%s\",\"data\":null}",
+                              errorStatus.getCode(),
+                              errorStatus.getMessage()));
+                  }
+              })
+              .accessDeniedHandler((req, res, ex2) -> {
+                  ErrorStatus errorStatus = ErrorStatus._FORBIDDEN;
+                  res.setStatus(errorStatus.getReasonHttpStatus().getHttpStatus().value());
+                  res.setContentType("application/json;charset=UTF-8");
+                  try (PrintWriter w = res.getWriter()) {
+                      w.write(String.format(
+                              "{\"isSuccess\":false,\"code\":\"%s\",\"message\":\"%s\",\"data\":null}",
+                              errorStatus.getCode(),
+                              errorStatus.getMessage()));
+                  }
+              }));
   }
 }
