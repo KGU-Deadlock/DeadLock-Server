@@ -28,6 +28,9 @@ public class User {
     @Column(name = "kakao_email", length = 40)
     private String kakaoEmail;
 
+    @Column(name = "kakao_id", length = 40)
+    private Long kakaoId;
+
     @CreatedDate
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
