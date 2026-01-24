@@ -12,8 +12,8 @@ body:
         - [ ] Controller 및 DTO 정의
         - [ ] Service 비즈니스 로직 구현
         - [ ] 테스트 코드 (Unit/Integration) 작성
-      validations:
-        required: false
+    validations:
+      required: false
 
   - type: textarea
     id: description
@@ -24,3 +24,5 @@ body:
       placeholder: |
         - 회원 가입 시 이메일 중복 체크 로직은 기존 MemberValidator 재사용 필수.
         - 기획서 링크: https://figma.com/...
+    validations:
+      required: false
