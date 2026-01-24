@@ -1,66 +1,18 @@
-# PR Template
-
-## PR Type
-- [ ] Feat
-- [ ] Hotfix
-- [ ] Chore
-- [ ] Refactor
-
 ## Summary
-<!-- What does this PR do? Keep it short. -->
 
-## Context / Background
-<!-- Why is this change needed? Link to Issue or decision. -->
+>- 관련 있는 Issue를 태그해주세요.
 
-## Changes
-<!-- Bullet list of key changes. -->
+**해당 PR에 대한 요약을 작성해주세요.**
 
-## API Implementation (Optional)
-<details>
-<summary>Show API Details</summary>
+## Tasks
 
-### HTTP Method
-<!-- GET / POST / PUT / PATCH / DELETE -->
+- 해당 PR에 포함된 작업을 작성해주세요.
+- 해당 PR에 포함된 작업을 작성해주세요.
 
-### Endpoint URI
-<!-- /v1/example -->
+## To Reviewer
 
-### Request Spec (Body/Params)
-```json
-{
-  "example": "value"
-}
-```
+_(없을 경우 삭제) 더 전달할 내용이 있다면 여기에 작성해주세요._
 
-### Response Spec (Success)
-```json
-{
-  "example": "value"
-}
-```
+## Screenshot
 
-### Exception Scenarios
-<!-- 400 / 401 / 403 / 404 / 409 / 500 ... -->
-</details>
-
-## Implementation Tasks
-- [ ] Controller / DTO
-- [ ] Service logic
-- [ ] Validation / Exception
-- [ ] Tests (Unit / Integration)
-- [ ] Swagger / OpenAPI update
-
-## Notes / Constraints
-<!-- Reused logic, constraints, references, or links. -->
-
-## How to Test
-<!-- Steps to verify. -->
-
-## Screenshots / Evidence (Optional)
-<!-- Attach images or links if needed. -->
-
-## Final Checklist
-- [ ] No sensitive data included
-- [ ] No security risk introduced
-- [ ] Breaking change documented
-- [ ] Local verification completed
+_(없을 경우 삭제) 작업한 내용에 대한 스크린샷을 첨부해주세요._
