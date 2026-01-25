@@ -1,10 +1,9 @@
 package com.deadlock.hellocs.domain.user.dto;
 
-import com.deadlock.hellocs.domain.quiz.domain.Interest;
+import com.deadlock.hellocs.domain.interest.entity.Interest;
 import com.deadlock.hellocs.domain.quiz.domain.QuizLevel;
 import jakarta.validation.constraints.Size;
 import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.NotEmpty;
 
