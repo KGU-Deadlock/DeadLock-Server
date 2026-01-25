@@ -1,4 +1,4 @@
-package com.deadlock.hellocs.domain.quiz.domain;
+package com.deadlock.hellocs.domain.interest.entity;
 
 public enum Interest {
     FRONTEND,
