@@ -1,6 +1,5 @@
 package com.deadlock.hellocs.domain.user.dto;
 
-import com.deadlock.hellocs.domain.interest.entity.Interest;
 import com.deadlock.hellocs.domain.quiz.domain.QuizLevel;
 import jakarta.validation.constraints.Size;
 import jakarta.validation.constraints.Email;
@@ -24,5 +23,5 @@ public record UserSignUpRequest(
         QuizLevel quizLevel,
 
         @NotEmpty(message = "interests는 하나 이상 필수입니다.")
-        List<Interest> interests
+        List<String> interests
 ){}

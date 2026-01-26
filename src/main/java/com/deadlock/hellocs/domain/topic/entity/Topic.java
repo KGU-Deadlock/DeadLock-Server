@@ -1,9 +1,7 @@
-package com.deadlock.hellocs.domain.interest.entity;
+package com.deadlock.hellocs.domain.topic.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -18,14 +16,13 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Table(name = "interest")
-public class InterestEntity {
+@Table(name = "topics")
+public class Topic {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "interest", length = 20, nullable = false)
-    private Interest interest;
+    @Column(name = "name", length = 20, nullable = false, unique = true)
+    private String name;
 }
