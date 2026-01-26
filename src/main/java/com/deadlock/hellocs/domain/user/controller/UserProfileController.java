@@ -1,7 +1,7 @@
 package com.deadlock.hellocs.domain.user.controller;
 
-import com.deadlock.hellocs.domain.user.dto.MyProfileResponse;
-import com.deadlock.hellocs.domain.user.service.UserProfileQueryService;
+import com.deadlock.hellocs.domain.user.dto.ProfileResponse;
+import com.deadlock.hellocs.domain.user.service.UserProfileService;
 import com.deadlock.hellocs.global.apiPayload.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -15,11 +15,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class UserProfileController {
 
-    private final UserProfileQueryService userProfileQueryService;
+    private final UserProfileService userProfileService;
 
     @GetMapping("/me")
-    public ApiResponse<MyProfileResponse> getMyProfile(@AuthenticationPrincipal Jwt jwt) {
+    public ApiResponse<ProfileResponse> getMyProfile(@AuthenticationPrincipal Jwt jwt) {
         Long kakaoId = Long.valueOf(jwt.getSubject());
-        return ApiResponse.onSuccess(userProfileQueryService.getMyProfile(kakaoId));
+        return ApiResponse.onSuccess(userProfileService.getProfile(kakaoId));
     }
 }

@@ -1,11 +1,10 @@
 package com.deadlock.hellocs.domain.user.dto;
 
-import com.deadlock.hellocs.domain.interest.entity.Interest;
 import java.util.List;
 
-public record MyProfileResponse(
+public record ProfileResponse(
         String profileImage,
         String nickname,
-        List<Interest> interests
+        List<String> interests
 ) {
 }
