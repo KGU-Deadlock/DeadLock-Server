@@ -24,6 +24,11 @@ public abstract class BaseEntity {
 
     private LocalDateTime deletedAt;
 
+    /**
+     * Indicates whether the entity has been soft-deleted.
+     *
+     * @return `true` if the entity has a deletion timestamp, `false` otherwise.
+     */
     public boolean isDeleted() {
         return deletedAt != null;
     }

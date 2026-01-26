@@ -13,6 +13,12 @@ public class TopicAdapter implements TopicPort {
 
     private final TopicService topicService;
 
+    /**
+     * Retrieves the topic names for the given topic IDs.
+     *
+     * @param topicIds list of topic identifiers to resolve to names
+     * @return a list of topic names corresponding to the provided IDs
+     */
     @Override
     public List<String> getTopicNamesByIds(List<Long> topicIds) {
         return topicService.GetTopicNames(topicIds);

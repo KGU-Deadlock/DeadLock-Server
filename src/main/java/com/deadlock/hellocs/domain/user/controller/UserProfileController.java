@@ -17,6 +17,12 @@ public class UserProfileController {
 
     private final UserProfileService userProfileService;
 
+    /**
+     * Retrieve the authenticated user's profile.
+     *
+     * @param jwt the authentication JWT whose subject holds the user's Kakao ID
+     * @return an ApiResponse containing the user's ProfileResponse
+     */
     @GetMapping("/me")
     public ApiResponse<ProfileResponse> getMyProfile(@AuthenticationPrincipal Jwt jwt) {
         Long kakaoId = Long.valueOf(jwt.getSubject());
