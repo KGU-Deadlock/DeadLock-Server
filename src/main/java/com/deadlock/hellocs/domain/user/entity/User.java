@@ -44,7 +44,7 @@ public class User extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "quiz_level")
     private QuizLevel quizLevel;
-
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    `@OneToMany`(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    `@Builder.Default`
     private List<UserInterest> interests = new ArrayList<>();
 }
