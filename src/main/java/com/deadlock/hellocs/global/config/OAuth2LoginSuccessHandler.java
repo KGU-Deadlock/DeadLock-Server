@@ -1,6 +1,6 @@
 package com.deadlock.hellocs.global.config;
 
-import com.deadlock.hellocs.domain.user.repository.UserRepository;
+import com.deadlock.hellocs.user.application.port.in.LoadUserUseCase;
 import com.deadlock.hellocs.global.jwt.JwtTokenProvider;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -19,7 +19,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final ObjectMapper objectMapper;
-    private final UserRepository userRepository;
+    private final LoadUserUseCase loadUserUseCase;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException {
@@ -30,7 +30,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         String refreshToken = jwtTokenProvider.createRefreshToken(authentication);
 
         Oauth2Response responseData = new Oauth2Response(accessToken, refreshToken, false);
-        if(userRepository.findByKakaoId(kakaoId).isPresent()){
+        if(loadUserUseCase.isExist(kakaoId)) {
             responseData = new Oauth2Response(accessToken, refreshToken, true);
         }
         objectMapper.writeValue(response.getWriter(), responseData);
