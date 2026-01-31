@@ -15,6 +15,6 @@ public class TopicAdapter implements TopicPort {
 
     @Override
     public List<String> getTopicNamesByIds(List<Long> topicIds) {
-        return topicService.GetTopicNames(topicIds);
+        return topicService.getTopicNames(topicIds);
     }
 }
