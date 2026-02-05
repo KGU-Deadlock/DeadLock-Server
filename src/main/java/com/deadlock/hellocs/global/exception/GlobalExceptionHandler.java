@@ -33,7 +33,7 @@ public class GlobalExceptionHandler {
       }
 
       if (message.contains("사용자를 찾을 수 없습니다")) {
-        log.warn("User not found: {}", message);
+        log.warn("UserJpaJpaEntity not found: {}", message);
         return ResponseEntity
             .status(ErrorStatus._USER_NOT_FOUND.getReasonHttpStatus().getHttpStatus())
             .body(ApiResponse.onFailure(ErrorStatus._USER_NOT_FOUND, null));
