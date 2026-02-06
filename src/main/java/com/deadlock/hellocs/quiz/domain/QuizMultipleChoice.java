@@ -14,4 +14,14 @@ public class QuizMultipleChoice extends Quiz {
     private Integer answer;
     private String explain;
     private String choice;
+
+    @Override
+    public boolean isMatch(String answer) {
+        return String.valueOf(this.answer).equals(answer);
+    }
+
+    @Override
+    public String getCorrectAnswerStr() {
+        return String.valueOf(this.answer);
+    }
 }

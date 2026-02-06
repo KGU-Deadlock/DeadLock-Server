@@ -22,4 +22,8 @@ public abstract class Quiz {
     private LocalDateTime updatedAt;
     private LocalDateTime deletedAt;
     private List<Long> topicIds;
+
+    public abstract boolean isMatch(String answer);
+    public abstract String getCorrectAnswerStr();
+    public abstract String getExplain();
 }

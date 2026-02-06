@@ -14,4 +14,14 @@ public class QuizVoice extends Quiz {
     private String answer;
     private String explain;
     private String contentText;
+
+    @Override
+    public boolean isMatch(String answer) {
+        return false;
+    }
+
+    @Override
+    public String getCorrectAnswerStr() {
+        return this.answer;
+    }
 }
