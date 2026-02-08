@@ -1,6 +1,6 @@
 package com.deadlock.hellocs.user.domain;
 
-import com.deadlock.hellocs.quiz.QuizLevel;
+import com.deadlock.hellocs.quiz.shared.domain.QuizLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;

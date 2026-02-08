@@ -1,6 +1,6 @@
 package com.deadlock.hellocs.user.adapter.out.persistence.entity;
 
-import com.deadlock.hellocs.quiz.QuizLevel;
+import com.deadlock.hellocs.quiz.shared.domain.QuizLevel;
 import com.deadlock.hellocs.user.domain.User;
 import com.deadlock.hellocs.global.entity.BaseJpaEntity;
 import jakarta.persistence.*;
