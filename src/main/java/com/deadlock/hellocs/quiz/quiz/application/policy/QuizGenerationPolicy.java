@@ -1,14 +1,16 @@
 package com.deadlock.hellocs.quiz.quiz.application.policy;
 
+import com.deadlock.hellocs.quiz.quiz.application.port.in.dto.GetQuizCommand;
+import com.deadlock.hellocs.quiz.quiz.application.port.out.QueryQuizOutputPort;
+import com.deadlock.hellocs.quiz.quiz.domain.Quiz;
 import com.deadlock.hellocs.quiz.shared.domain.QuizMode;
-import com.deadlock.hellocs.quiz.shared.domain.QuizType;
 
-import java.util.Map;
+import java.util.List;
 
 /**
  * Quiz 생성 정책
  * 
- * 모드별로 어떤 타입의 Quiz를 몇 개씩 생성할지 정의
+ * 모드별로 퀴즈 생성 로직을 정의
  */
 public interface QuizGenerationPolicy {
     /**
@@ -20,9 +22,11 @@ public interface QuizGenerationPolicy {
     boolean supports(QuizMode mode);
     
     /**
-     * Quiz 타입별 생성 개수 반환
+     * 정책에 따라 Quiz 리스트 생성
      * 
-     * @return Map<QuizType, 개수>
+     * @param command 퀴즈 조회 요청 커맨드
+     * @param queryQuizPort 퀴즈 조회 포트
+     * @return 생성된 Quiz 리스트
      */
-    Map<QuizType, Integer> getQuizComposition();
+    List<Quiz> generate(GetQuizCommand command, QueryQuizOutputPort queryQuizPort);
 }

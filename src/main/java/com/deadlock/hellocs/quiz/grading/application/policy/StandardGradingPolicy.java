@@ -1,6 +1,6 @@
 package com.deadlock.hellocs.quiz.grading.application.policy;
 
-import com.deadlock.hellocs.quiz.grading.domain.GradingResult;
+import com.deadlock.hellocs.quiz.grading.domain.GradingItem;
 import com.deadlock.hellocs.quiz.quiz.domain.Quiz;
 import com.deadlock.hellocs.quiz.quiz.domain.vo.QuizAnswer;
 import com.deadlock.hellocs.quiz.shared.domain.QuizType;
@@ -22,15 +22,16 @@ public class StandardGradingPolicy implements GradingPolicy {
     }
     
     @Override
-    public GradingResult grade(Quiz quiz, String userAnswer) {
+    public GradingItem grade(Quiz quiz, String userAnswer) {
         QuizAnswer quizAnswer = quiz.getAnswer();
         boolean isCorrect = quizAnswer.asString().equalsIgnoreCase(userAnswer);
         
-        return GradingResult.builder()
+        return GradingItem.builder()
                 .quizId(quiz.getId())
-                .answer(quiz.getAnswer().asString())
-                .feedback(quiz.getExplain())
                 .score(isCorrect ? 100 : 0)
+                .isCorrect(isCorrect)
+                .userAnswer(userAnswer)
+                .feedback(quiz.getExplain())
                 .build();
     }
 }

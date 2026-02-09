@@ -7,7 +7,7 @@ import com.deadlock.hellocs.quiz.shared.domain.QuizType;
 import java.util.List;
 import java.util.Optional;
 
-public interface LoadQuizOutputPort {
+public interface QueryQuizOutputPort {
     List<Quiz> findQuizzesByCriteria(
             QuizLevel level,
             List<Long> topicIds,

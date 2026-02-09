@@ -1,9 +1,14 @@
 package com.deadlock.hellocs.quiz.quiz.application.policy;
 
+import com.deadlock.hellocs.quiz.quiz.application.port.in.dto.GetQuizCommand;
+import com.deadlock.hellocs.quiz.quiz.application.port.out.QueryQuizOutputPort;
+import com.deadlock.hellocs.quiz.quiz.domain.Quiz;
 import com.deadlock.hellocs.quiz.shared.domain.QuizMode;
 import com.deadlock.hellocs.quiz.shared.domain.QuizType;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -13,6 +18,12 @@ import java.util.Map;
  */
 @Component
 public class StandardQuizGenerationPolicy implements QuizGenerationPolicy {
+
+    private static final Map<QuizType, Integer> COMPOSITION = Map.of(
+            QuizType.OX, 2,
+            QuizType.MULTIPLE_CHOICE, 2,
+            QuizType.SHORT_ANSWER, 1
+    );
     
     @Override
     public boolean supports(QuizMode mode) {
@@ -20,11 +31,19 @@ public class StandardQuizGenerationPolicy implements QuizGenerationPolicy {
     }
     
     @Override
-    public Map<QuizType, Integer> getQuizComposition() {
-        return Map.of(
-                QuizType.OX, 2,
-                QuizType.MULTIPLE_CHOICE, 2,
-                QuizType.SHORT_ANSWER, 1
-        );
+    public List<Quiz> generate(GetQuizCommand command, QueryQuizOutputPort queryQuizPort) {
+        List<Quiz> quizzes = new ArrayList<>();
+
+        COMPOSITION.forEach((type, count) -> {
+            List<Quiz> foundQuizzes = queryQuizPort.findQuizzesByCriteria(
+                    command.level(),
+                    command.topicIds(),
+                    type,
+                    count
+            );
+            quizzes.addAll(foundQuizzes);
+        });
+
+        return quizzes;
     }
 }

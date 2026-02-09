@@ -16,6 +16,7 @@ public interface QuizRepository extends JpaRepository<QuizJpaEntity, Long> {
     /**
      * 조건에 맞는 Quiz 조회
      */
+    // TODO: QueryDSL 이용이나 기타 방법...
     @Query("SELECT DISTINCT q FROM QuizJpaEntity q " +
            "JOIN q.topicIds t " +
            "WHERE q.level = :level " +

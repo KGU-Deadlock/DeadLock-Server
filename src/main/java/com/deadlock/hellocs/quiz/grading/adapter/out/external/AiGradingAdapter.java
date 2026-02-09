@@ -1,21 +1,21 @@
 package com.deadlock.hellocs.quiz.grading.adapter.out.external;
 
-import com.deadlock.hellocs.quiz.grading.application.port.out.AiGradingOutputPort;
-import com.deadlock.hellocs.quiz.grading.domain.GradingResult;
+import com.deadlock.hellocs.quiz.grading.application.port.out.CommandAiGradingOutputPort;
+import com.deadlock.hellocs.quiz.grading.domain.GradingItem;
 import com.deadlock.hellocs.quiz.quiz.domain.Quiz;
 import org.springframework.stereotype.Component;
 
 /**
  * AI 채점 External Adapter
  * 
- * 실제 AI 서비스 (OpenAI, Claude 등) 호출
+ * 실제 AI 서비스(OpenAI, Claude 등) 호출
  * 현재는 Mock 구현
  */
 @Component
-public class AiGradingAdapter implements AiGradingOutputPort {
+public class AiGradingAdapter implements CommandAiGradingOutputPort {
     
     @Override
-    public GradingResult gradeWithAi(Quiz quiz, String userAnswer) {
+    public GradingItem gradeWithAi(Quiz quiz, String userAnswer) {
         // TODO: 실제 AI 서비스 호출 구현
         // 예: OpenAI API, Claude API 등
         
@@ -24,11 +24,12 @@ public class AiGradingAdapter implements AiGradingOutputPort {
         int score = calculateMockScore(userAnswer, quiz.getAnswer().asString());
         String feedback = generateMockFeedback(score);
         
-        return GradingResult.builder()
+        return GradingItem.builder()
                 .quizId(quiz.getId())
-                .answer(quiz.getAnswer().asString())
-                .feedback(feedback)
                 .score(score)
+                .isCorrect(score >= 70)
+                .userAnswer(userAnswer)
+                .feedback(feedback)
                 .build();
     }
     
@@ -54,7 +55,7 @@ public class AiGradingAdapter implements AiGradingOutputPort {
             return 70;
         }
         
-        // 단어 수가 적절하면 부분 점수
+        // 단어 길이 유사하면 부분 점수
         if (normalizedUser.length() > 5) {
             return 40;
         }
@@ -71,7 +72,7 @@ public class AiGradingAdapter implements AiGradingOutputPort {
         } else if (score >= 70) {
             return "좋습니다! 핵심 내용을 포함하고 있습니다.";
         } else if (score >= 40) {
-            return "답변이 다소 부족합니다. 좀 더 구체적으로 설명해주세요.";
+            return "답변이 다소 부족합니다. 좀 더 구체적으로 써주세요.";
         } else {
             return "정답과 거리가 멉니다. 다시 한번 생각해보세요.";
         }

@@ -1,5 +1,6 @@
 package com.deadlock.hellocs.user.application.service;
 
+import com.deadlock.hellocs.quiz.shared.domain.QuizLevel;
 import com.deadlock.hellocs.user.application.port.in.CreateUserUseCase;
 import com.deadlock.hellocs.user.application.port.in.LoadUserUseCase;
 import com.deadlock.hellocs.user.application.port.out.LoadTopicPort;
@@ -50,6 +51,12 @@ public class UserService implements CreateUserUseCase, LoadUserUseCase {
         List<String> interests = loadTopicPort.getTopicNamesByIds(interestIds);
 
         return new ProfileResponse(user.getProfileImage(), user.getNickname(), interests);
+    }
+
+    @Override
+    public QuizLevel getUserLevel(Long kakaoId) {
+        User user = loadUserPort.loadUserByKakaoId(kakaoId);
+        return user.getQuizLevel();
     }
 
     @Override
