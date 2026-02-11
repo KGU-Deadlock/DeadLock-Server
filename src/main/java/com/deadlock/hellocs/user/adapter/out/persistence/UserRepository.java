@@ -10,4 +10,5 @@ import java.util.Optional;
 public interface UserRepository extends JpaRepository<UserJpaJpaEntity,Long> {
     Optional<UserJpaJpaEntity> findByNickname(String nickname);
     Optional<UserJpaJpaEntity> findByKakaoId(Long kakaoId);
+    boolean existsByNickname(String nickname);
 }
