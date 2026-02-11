@@ -1,13 +1,18 @@
 package com.deadlock.hellocs.user.application.service;
 
 import com.deadlock.hellocs.quiz.shared.domain.QuizLevel;
+import com.deadlock.hellocs.global.apiPayload.code.status.ErrorStatus;
+import com.deadlock.hellocs.global.exception.CustomException;
+import com.deadlock.hellocs.user.application.port.in.ManageUserUseCase;
 import com.deadlock.hellocs.user.application.port.in.CreateUserUseCase;
 import com.deadlock.hellocs.user.application.port.in.LoadUserUseCase;
 import com.deadlock.hellocs.user.application.port.out.LoadTopicPort;
 import com.deadlock.hellocs.user.application.port.out.LoadUserPort;
 import com.deadlock.hellocs.user.application.port.out.SaveUserPort;
+import com.deadlock.hellocs.user.adapter.in.web.dto.MyInfoResponse;
 import com.deadlock.hellocs.user.domain.User;
 import com.deadlock.hellocs.user.adapter.in.web.dto.ProfileResponse;
+import com.deadlock.hellocs.user.adapter.in.web.dto.UpdateMyInfoRequest;
 import com.deadlock.hellocs.user.adapter.in.web.dto.UserSignUpRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -18,7 +23,7 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 @Transactional
-public class UserService implements CreateUserUseCase, LoadUserUseCase {
+public class UserService implements CreateUserUseCase, LoadUserUseCase, ManageUserUseCase {
 
     private final LoadUserPort loadUserPort;
     private final SaveUserPort saveUserPort;
@@ -60,7 +65,40 @@ public class UserService implements CreateUserUseCase, LoadUserUseCase {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public boolean isExist(Long kakaoId) {
-        return getProfile(kakaoId) != null;
+        try {
+            loadUserPort.loadUserByKakaoId(kakaoId);
+            return true;
+        } catch (CustomException e) {
+            if (e.getErrorCode() == ErrorStatus._USER_NOT_FOUND) {
+                return false;
+            }
+            throw e;
+        }
+    }
+
+    @Override
+    public MyInfoResponse updateMyInfo(Long kakaoId, UpdateMyInfoRequest request) {
+        User user = loadUserPort.loadUserByKakaoId(kakaoId);
+
+        if (request.nickname() != null
+                && !request.nickname().equals(user.getNickname())
+                && loadUserPort.existsByNickname(request.nickname())) {
+            throw new CustomException(ErrorStatus._NICKNAME_ALREADY_EXISTS);
+        }
+
+        String changedNickname = request.nickname() != null ? request.nickname() : user.getNickname();
+        String changedProfileImage = request.profileImage() != null ? request.profileImage() : user.getProfileImage();
+
+        user.updateProfile(changedNickname, changedProfileImage, user.getInterestTopicIds());
+        saveUserPort.saveUser(user);
+
+        return MyInfoResponse.from(user);
+    }
+
+    @Override
+    public void deleteMyAccount(Long kakaoId) {
+        saveUserPort.deleteUserByKakaoId(kakaoId);
     }
 }

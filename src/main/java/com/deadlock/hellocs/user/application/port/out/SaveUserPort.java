@@ -4,4 +4,5 @@ import com.deadlock.hellocs.user.domain.User;
 
 public interface SaveUserPort {
     void saveUser(User user);
+    void deleteUserByKakaoId(Long kakaoId);
 }
