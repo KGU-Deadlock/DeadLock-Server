@@ -17,7 +17,7 @@ public class OxAnswer implements QuizAnswer {
 
     public static OxAnswer of(Boolean value) {
         if (value == null) {
-            throw new IllegalArgumentException("OX answer cannot be null");
+            throw new IllegalArgumentException("OX 정답은 null일 수 없습니다.");
         }
         return new OxAnswer(value);
     }

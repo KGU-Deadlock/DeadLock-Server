@@ -5,12 +5,13 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 
 /**
- * 사용자 답안 DTO
+ * 채점 상세 조회 요청 DTO
  */
-public record UserGradingCommand(
+public record GetGradingDetailLogCommand(
+        @NotBlank(message = "채점 로그 ID는 필수입니다.")
+        String gradingLogId,
         @NotNull(message = "퀴즈 ID는 필수입니다.")
         @Positive(message = "퀴즈 ID는 1 이상이어야 합니다.")
-        Long quizId,
-        @NotBlank(message = "답안은 비어 있을 수 없습니다.")
-        String answer
-) {}
+        Long quizId
+) {
+}

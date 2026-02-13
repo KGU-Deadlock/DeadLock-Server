@@ -1,9 +1,7 @@
 package com.deadlock.hellocs.quiz.grading.application.port.in;
 
-import com.deadlock.hellocs.quiz.grading.application.port.in.dto.UserGradingCommand;
-
-import java.util.List;
+import com.deadlock.hellocs.quiz.grading.application.port.in.dto.SubmitAnswersCommand;
 
 public interface CommandAnswerInputPort {
-    String submit(Long userId, List<UserGradingCommand> answers);
+    String submit(SubmitAnswersCommand command);
 }

@@ -17,7 +17,7 @@ public class MultipleChoiceAnswer implements QuizAnswer {
 
     public static MultipleChoiceAnswer of(Integer value) {
         if (value == null || value < 1 || value > 5) {
-            throw new IllegalArgumentException("Multiple choice answer must be between 1 and 5");
+            throw new IllegalArgumentException("객관식 정답은 1 이상 5 이하여야 합니다.");
         }
         return new MultipleChoiceAnswer(value);
     }
