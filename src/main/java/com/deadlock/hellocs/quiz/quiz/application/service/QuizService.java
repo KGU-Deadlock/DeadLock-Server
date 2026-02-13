@@ -8,8 +8,6 @@ import com.deadlock.hellocs.quiz.quiz.application.port.in.dto.GetQuizCommand;
 import com.deadlock.hellocs.quiz.quiz.application.port.out.QueryQuizOutputPort;
 import com.deadlock.hellocs.quiz.quiz.domain.Quiz;
 import com.deadlock.hellocs.quiz.shared.domain.QuizMode;
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,7 +25,7 @@ public class QuizService implements QueryQuizInputPort {
     private final QueryQuizOutputPort queryQuizPort;
 
     @Override
-    public List<Quiz> getQuizzes(@NotNull @Valid GetQuizCommand request) {
+    public List<Quiz> getQuizzes(GetQuizCommand request) {
         QuizGenerationPolicy policy = getGenerationPolicy(request.mode());
         return policy.generate(request, queryQuizPort);
     }

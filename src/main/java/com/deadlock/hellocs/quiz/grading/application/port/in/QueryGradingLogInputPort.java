@@ -4,8 +4,9 @@ import com.deadlock.hellocs.quiz.grading.application.port.in.dto.GetGradingDetai
 import com.deadlock.hellocs.quiz.grading.application.port.in.dto.GetGradingLogCommand;
 import com.deadlock.hellocs.quiz.grading.application.port.in.dto.GradingDetailLogResult;
 import com.deadlock.hellocs.quiz.grading.application.port.in.dto.GradingLogResult;
+import jakarta.validation.Valid;
 
 public interface QueryGradingLogInputPort {
-    GradingLogResult getGradingLog(GetGradingLogCommand command);
-    GradingDetailLogResult getGradingDetailLog(GetGradingDetailLogCommand command);
+    GradingLogResult getGradingLog(@Valid GetGradingLogCommand command);
+    GradingDetailLogResult getGradingDetailLog(@Valid GetGradingDetailLogCommand command);
 }

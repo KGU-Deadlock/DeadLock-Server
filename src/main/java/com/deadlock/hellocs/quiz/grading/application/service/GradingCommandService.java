@@ -12,7 +12,6 @@ import com.deadlock.hellocs.quiz.grading.domain.GradingItem;
 import com.deadlock.hellocs.quiz.quiz.application.port.out.QueryQuizOutputPort;
 import com.deadlock.hellocs.quiz.quiz.domain.Quiz;
 import com.deadlock.hellocs.quiz.shared.domain.QuizType;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,7 +41,7 @@ public class GradingCommandService implements CommandAnswerInputPort {
     private final List<GradingPolicy> gradingPolicies;
     
     @Override
-    public String submit(@Valid SubmitAnswersCommand command) {
+    public String submit(SubmitAnswersCommand command) {
         if (command == null) {
             throw new CustomException(QuizErrorStatus.GRADING_REQUEST_INVALID);
         }

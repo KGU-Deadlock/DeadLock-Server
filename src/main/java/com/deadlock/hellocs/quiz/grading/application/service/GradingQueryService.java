@@ -12,7 +12,6 @@ import com.deadlock.hellocs.quiz.grading.domain.GradingLog;
 import com.deadlock.hellocs.quiz.grading.domain.GradingItem;
 import com.deadlock.hellocs.quiz.quiz.application.port.out.QueryQuizOutputPort;
 import com.deadlock.hellocs.quiz.quiz.domain.Quiz;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,7 +37,7 @@ public class GradingQueryService implements QueryGradingLogInputPort {
     private final QueryQuizOutputPort queryQuizOutputPort;
 
     @Override
-    public GradingLogResult getGradingLog(@Valid GetGradingLogCommand command) {
+    public GradingLogResult getGradingLog(GetGradingLogCommand command) {
         if (command == null) {
             throw new CustomException(QuizErrorStatus.GRADING_REQUEST_INVALID);
         }
@@ -55,7 +54,7 @@ public class GradingQueryService implements QueryGradingLogInputPort {
     }
 
     @Override
-    public GradingDetailLogResult getGradingDetailLog(@Valid GetGradingDetailLogCommand command) {
+    public GradingDetailLogResult getGradingDetailLog(GetGradingDetailLogCommand command) {
         if (command == null) {
             throw new CustomException(QuizErrorStatus.GRADING_REQUEST_INVALID);
         }
