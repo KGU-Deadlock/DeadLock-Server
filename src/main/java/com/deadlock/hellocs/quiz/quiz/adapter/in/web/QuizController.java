@@ -1,6 +1,8 @@
 package com.deadlock.hellocs.quiz.quiz.adapter.in.web;
 
+import com.deadlock.hellocs.global.apiPayload.ApiResponse;
 import com.deadlock.hellocs.quiz.quiz.adapter.in.web.dto.GetQuizRequest;
+import com.deadlock.hellocs.quiz.quiz.adapter.in.web.docs.QuizControllerDocs;
 import com.deadlock.hellocs.quiz.quiz.application.port.in.QueryQuizInputPort;
 import com.deadlock.hellocs.quiz.quiz.application.port.in.dto.GetQuizCommand;
 import com.deadlock.hellocs.quiz.quiz.domain.Quiz;
@@ -18,18 +20,19 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/quiz")
 @RequiredArgsConstructor
-public class QuizController {
+public class QuizController implements QuizControllerDocs {
     private final QueryQuizInputPort queryQuizInputPort;
     private final LoadUserUseCase loadUserUseCase;
 
     @GetMapping()
-    public List<Quiz> getQuizzes(
+    @Override
+    public ApiResponse<List<Quiz>> getQuizzes(
             GetQuizRequest getQuizRequest,
-            @AuthenticationPrincipal Jwt jwt
+            @AuthenticationPrincipal Jwt jwtUser
     ) {
-        Long kakaoId = Long.valueOf(jwt.getSubject());
+        Long kakaoId = Long.valueOf(jwtUser.getSubject());
         QuizLevel userLevel = loadUserUseCase.getUserLevel(kakaoId);
         GetQuizCommand request = new GetQuizCommand(userLevel, getQuizRequest.topicIds(), getQuizRequest.mode());
-        return queryQuizInputPort.getQuizzes(request);
+        return ApiResponse.onSuccess(queryQuizInputPort.getQuizzes(request));
     }
 }

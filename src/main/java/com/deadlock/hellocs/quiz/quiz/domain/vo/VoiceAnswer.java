@@ -17,7 +17,7 @@ public class VoiceAnswer implements QuizAnswer {
 
     public static VoiceAnswer of(String value) {
         if (value == null || value.trim().isEmpty()) {
-            throw new IllegalArgumentException("Voice answer cannot be empty");
+            throw new IllegalArgumentException("음성형 정답은 비어 있을 수 없습니다.");
         }
         return new VoiceAnswer(value.trim());
     }

@@ -29,7 +29,7 @@ public class QuizMultipleChoiceJpaEntity extends QuizJpaEntity {
     @Column(name = "explain", columnDefinition = "TEXT")
     private String explain;
     
-    @Column(name = "choice", columnDefinition = "TEXT")
+    @Column(name = "choice", columnDefinition = "INTEGER")
     private Integer choice;
     
     @Override
