@@ -1,6 +1,7 @@
 package com.deadlock.hellocs.quiz.grading.adapter.in.web;
 
 import com.deadlock.hellocs.global.apiPayload.ApiResponse;
+import com.deadlock.hellocs.quiz.grading.adapter.in.web.docs.QuizGradingControllerDocs;
 import com.deadlock.hellocs.quiz.grading.application.port.in.dto.GradingDetailLogResult;
 import com.deadlock.hellocs.quiz.grading.application.port.in.dto.GradingLogResult;
 import com.deadlock.hellocs.quiz.grading.adapter.in.web.dto.SubmitAnswerResponse;
@@ -10,6 +11,7 @@ import com.deadlock.hellocs.quiz.grading.application.port.in.dto.GetGradingDetai
 import com.deadlock.hellocs.quiz.grading.application.port.in.dto.GetGradingLogCommand;
 import com.deadlock.hellocs.quiz.grading.application.port.in.dto.SubmitAnswersCommand;
 import com.deadlock.hellocs.quiz.grading.application.port.in.dto.UserGradingCommand;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -20,14 +22,15 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/quiz/grading")
 @RequiredArgsConstructor
-public class QuizGradingController {
+public class QuizGradingController implements QuizGradingControllerDocs {
     private final CommandAnswerInputPort commandAnswerInputPort;
     private final QueryGradingLogInputPort queryGradingLogInputPort;
 
     @PostMapping()
+    @Override
     public ApiResponse<SubmitAnswerResponse> submitAnswers(
             @AuthenticationPrincipal Jwt jwt,
-            @RequestBody List<UserGradingCommand> answers
+            @RequestBody List<@Valid UserGradingCommand> answers
     ) {
         Long userId = Long.valueOf(jwt.getSubject());
         String gradingLogId = commandAnswerInputPort.submit(new SubmitAnswersCommand(userId, answers));
@@ -38,14 +41,21 @@ public class QuizGradingController {
     }
 
     @GetMapping("/{gradingLogId}")
-    public ApiResponse<GradingLogResult> getGradingLog(@PathVariable String gradingLogId) {
+    @Override
+    public ApiResponse<GradingLogResult> getGradingLog(
+            @PathVariable String gradingLogId
+    ) {
         return ApiResponse.onSuccess(
                 queryGradingLogInputPort.getGradingLog(new GetGradingLogCommand(gradingLogId))
         );
     }
 
     @GetMapping("/{gradingLogId}/{quizId}")
-    public ApiResponse<GradingDetailLogResult> getGradingDetailLog(@PathVariable String gradingLogId, @PathVariable Long quizId) {
+    @Override
+    public ApiResponse<GradingDetailLogResult> getGradingDetailLog(
+            @PathVariable String gradingLogId,
+            @PathVariable Long quizId
+    ) {
         return ApiResponse.onSuccess(
                 queryGradingLogInputPort.getGradingDetailLog(new GetGradingDetailLogCommand(gradingLogId, quizId))
         );
