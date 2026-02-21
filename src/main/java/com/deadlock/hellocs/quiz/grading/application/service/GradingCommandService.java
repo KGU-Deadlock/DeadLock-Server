@@ -1,7 +1,10 @@
 package com.deadlock.hellocs.quiz.grading.application.service;
 
+import com.deadlock.hellocs.global.exception.CustomException;
+import com.deadlock.hellocs.quiz.exception.QuizErrorStatus;
 import com.deadlock.hellocs.quiz.grading.application.policy.GradingPolicy;
 import com.deadlock.hellocs.quiz.grading.application.port.in.CommandAnswerInputPort;
+import com.deadlock.hellocs.quiz.grading.application.port.in.dto.SubmitAnswersCommand;
 import com.deadlock.hellocs.quiz.grading.application.port.in.dto.UserGradingCommand;
 import com.deadlock.hellocs.quiz.grading.application.port.out.CommandGradingLogOutputPort;
 import com.deadlock.hellocs.quiz.grading.domain.GradingLog;
@@ -12,9 +15,13 @@ import com.deadlock.hellocs.quiz.shared.domain.QuizType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.validation.annotation.Validated;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * 채점 Command 서비스 (CUD 담당)
@@ -26,6 +33,7 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 @Transactional
+@Validated
 public class GradingCommandService implements CommandAnswerInputPort {
     
     private final QueryQuizOutputPort queryQuizPort;
@@ -33,9 +41,16 @@ public class GradingCommandService implements CommandAnswerInputPort {
     private final List<GradingPolicy> gradingPolicies;
     
     @Override
-    public String submit(Long userId, List<UserGradingCommand> answers) {
+    public String submit(SubmitAnswersCommand command) {
+        if (command == null) {
+            throw new CustomException(QuizErrorStatus.GRADING_REQUEST_INVALID);
+        }
+        Long userId = command.userId();
+        List<UserGradingCommand> answers = command.answers();
+
         // 1. 퀴즈 ID 추출
         List<Long> quizIds = extractQuizIds(answers);
+        validateQuizIds(quizIds);
 
         // 2. 퀴즈 조회
         List<Quiz> quizzes = loadQuizzes(quizIds);
@@ -56,26 +71,40 @@ public class GradingCommandService implements CommandAnswerInputPort {
                 .toList();
     }
 
+    private void validateQuizIds(List<Long> quizIds) {
+        long uniqueCount = quizIds.stream().distinct().count();
+        if (uniqueCount != quizIds.size()) {
+            throw new CustomException(QuizErrorStatus.GRADING_REQUEST_INVALID);
+        }
+    }
+
     private List<Quiz> loadQuizzes(List<Long> quizIds) {
-        // TODO: 예외 처리 구현 필요 (Quizzes not found or size mismatch)
-        return queryQuizPort.findAllByIds(quizIds);
+        List<Quiz> quizzes = queryQuizPort.findAllByIds(quizIds);
+
+        if (quizzes.size() != quizIds.size()) {
+            throw new CustomException(QuizErrorStatus.GRADING_QUIZ_NOT_FOUND);
+        }
+        return quizzes;
     }
 
     private List<GradingItem> gradeAnswers(List<UserGradingCommand> answers, List<Quiz> quizzes) {
         List<GradingItem> results = new ArrayList<>();
+        Map<Long, Quiz> quizMap = quizzes.stream()
+                .collect(Collectors.toMap(Quiz::getId, Function.identity()));
+
         for (UserGradingCommand userGradingCommand : answers) {
-            Quiz quiz = findQuiz(quizzes, userGradingCommand.quizId());
+            Quiz quiz = findQuiz(quizMap, userGradingCommand.quizId());
             results.add(gradeAnswer(quiz, userGradingCommand.answer()));
         }
         return results;
     }
 
-    private Quiz findQuiz(List<Quiz> quizzes, Long quizId) {
-        // TODO: 예외 처리 구현 필요 (Quiz not found)
-        return quizzes.stream()
-                .filter(q -> q.getId().equals(quizId))
-                .findFirst()
-                .get();
+    private Quiz findQuiz(Map<Long, Quiz> quizMap, Long quizId) {
+        Quiz quiz = quizMap.get(quizId);
+        if (quiz == null) {
+            throw new CustomException(QuizErrorStatus.GRADING_QUIZ_NOT_FOUND);
+        }
+        return quiz;
     }
 
     private GradingItem gradeAnswer(Quiz quiz, String answer) {
@@ -84,10 +113,9 @@ public class GradingCommandService implements CommandAnswerInputPort {
     }
 
     private GradingPolicy findGradingPolicy(QuizType quizType) {
-        // TODO: 예외 처리 구현 필요 (No grading policy found)
         return gradingPolicies.stream()
                 .filter(policy -> policy.supports(quizType))
                 .findFirst()
-                .get();
+                .orElseThrow(() -> new CustomException(QuizErrorStatus.GRADING_POLICY_NOT_FOUND));
     }
 }
