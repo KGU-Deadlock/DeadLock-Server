@@ -1,80 +1,96 @@
 package com.deadlock.hellocs.quiz.grading.adapter.out.external;
 
+import com.deadlock.hellocs.global.exception.CustomException;
+import com.deadlock.hellocs.quiz.exception.QuizErrorStatus;
 import com.deadlock.hellocs.quiz.grading.application.port.out.CommandAiGradingOutputPort;
 import com.deadlock.hellocs.quiz.grading.domain.GradingItem;
 import com.deadlock.hellocs.quiz.quiz.domain.Quiz;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestClient;
+
+import java.util.List;
 
 /**
  * AI 채점 External Adapter
- * 
- * 실제 AI 서비스(OpenAI, Claude 등) 호출
- * 현재는 Mock 구현
+ *
+ * 실제 AI 서비스 호출
  */
 @Component
+@Slf4j
+@RequiredArgsConstructor
 public class AiGradingAdapter implements CommandAiGradingOutputPort {
-    
+
+    private final RestClient.Builder restClientBuilder;
+
+    @Value("${ai.grading.evaluate-endpoint}")
+    private String evaluateEndpoint;
+
     @Override
     public GradingItem gradeWithAi(Quiz quiz, String userAnswer) {
-        // TODO: 실제 AI 서비스 호출 구현
-        // 예: OpenAI API, Claude API 등
-        
-        // Mock 구현
-        boolean isReasonable = userAnswer != null && userAnswer.length() > 5;
-        int score = calculateMockScore(userAnswer, quiz.getAnswer().asString());
-        String feedback = generateMockFeedback(score);
-        
+        FeedbackRequest request = new FeedbackRequest(
+                quiz.getContent(),
+                userAnswer,
+                quiz.getAnswer().asString()
+        );
+
+        FeedbackResponse response = evaluate(request);
+        int normalizedScore = normalizeScore(response.score());
+
         return GradingItem.builder()
                 .quizId(quiz.getId())
-                .score(score)
-                .isCorrect(score >= 70)
+                .score(normalizedScore)
+                .isCorrect(normalizedScore >= 70)
                 .userAnswer(userAnswer)
-                .feedback(feedback)
+                .feedback(response.message())
+                .missingKeywords(response.missingKeywords() == null ? List.of() : response.missingKeywords())
+                .improvedAnswer(response.improvedAnswer())
                 .build();
     }
-    
-    /**
-     * Mock 점수 계산
-     */
-    private int calculateMockScore(String userAnswer, String answer) {
-        if (userAnswer == null || userAnswer.trim().isEmpty()) {
-            return 0;
+
+    private FeedbackResponse evaluate(FeedbackRequest request) {
+        try {
+            FeedbackResponse response = restClientBuilder.build()
+                    .post()
+                    .uri(evaluateEndpoint)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .accept(MediaType.APPLICATION_JSON)
+                    .body(request)
+                    .retrieve()
+                    .body(FeedbackResponse.class);
+
+            if (response == null) {
+                throw new CustomException(QuizErrorStatus.GRADING_AI_EVALUATION_FAILED);
+            }
+            return response;
+        } catch (CustomException e) {
+            throw e;
+        } catch (RuntimeException e) {
+            log.error("AI grading request failed. endpoint={}", evaluateEndpoint, e);
+            throw new CustomException(QuizErrorStatus.GRADING_AI_EVALUATION_FAILED);
         }
-        
-        // 간단한 유사도 체크
-        String normalizedUser = userAnswer.toLowerCase().trim();
-        String normalizedCorrect = answer.toLowerCase().trim();
-        
-        if (normalizedUser.equals(normalizedCorrect)) {
-            return 100;
-        }
-        
-        // 부분 점수 로직
-        if (normalizedUser.contains(normalizedCorrect) || 
-            normalizedCorrect.contains(normalizedUser)) {
-            return 70;
-        }
-        
-        // 단어 길이 유사하면 부분 점수
-        if (normalizedUser.length() > 5) {
-            return 40;
-        }
-        
-        return 20;
     }
-    
-    /**
-     * Mock 피드백 생성
-     */
-    private String generateMockFeedback(int score) {
-        if (score >= 100) {
-            return "완벽합니다! 정확한 답변입니다.";
-        } else if (score >= 70) {
-            return "좋습니다! 핵심 내용을 포함하고 있습니다.";
-        } else if (score >= 40) {
-            return "답변이 다소 부족합니다. 좀 더 구체적으로 써주세요.";
-        } else {
-            return "정답과 거리가 멉니다. 다시 한번 생각해보세요.";
-        }
+
+    private int normalizeScore(int score) {
+        return Math.max(0, Math.min(100, score));
+    }
+
+    private record FeedbackRequest(
+            @JsonProperty("question") String question,
+            @JsonProperty("user_answer") String userAnswer,
+            @JsonProperty("model_answer") String modelAnswer
+    ) {
+    }
+
+    private record FeedbackResponse(
+            @JsonProperty("score") int score,
+            @JsonProperty("missing_keywords") List<String> missingKeywords,
+            @JsonProperty("improved_answer") String improvedAnswer,
+            @JsonProperty("message") String message
+    ) {
     }
 }

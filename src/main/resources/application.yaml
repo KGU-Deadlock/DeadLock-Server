@@ -1,3 +1,7 @@
 spring:
   application:
     name: hellocs
+
+ai:
+  grading:
+    evaluate-endpoint: http://localhost:8000/api/feedback/evaluate
