@@ -16,6 +16,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 
 import java.util.List;
 
+
 @Tag(name = "Quiz Grading", description = "퀴즈 채점 API")
 @SecurityRequirement(name = "bearerAuth")
 public interface QuizGradingControllerDocs {
