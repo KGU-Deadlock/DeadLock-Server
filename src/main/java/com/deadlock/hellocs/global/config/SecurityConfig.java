@@ -47,6 +47,7 @@ public class SecurityConfig {
                         .requestMatchers(SWAGGER_WHITELIST).permitAll()
                         // 수정 표시
                         .requestMatchers("/oauth2/**", "/login/oauth2/**", "/api/v1/auth/token/**").permitAll()
+                        .requestMatchers("/api/v1/dev/**").permitAll()
                         // 수정 표시
                         .requestMatchers(HttpMethod.GET, "/api/v1/ranking/summary").permitAll()
                         // 수정 표시

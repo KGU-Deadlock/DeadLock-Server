@@ -40,7 +40,7 @@ public class RankingService implements ApplyRankingScoreInputPort, QueryRankingI
     private final LoadUserPort loadUserPort;
 
     @Override
-    public void apply(@Valid ApplyRankingScoreCommand command) {
+    public void apply(ApplyRankingScoreCommand command) {
         // 수정 표시
         updateRankingPort.increaseScoreIfAbsent(
                 command.gradingLogId(),
@@ -59,9 +59,9 @@ public class RankingService implements ApplyRankingScoreInputPort, QueryRankingI
 
     @Override
     public RankingDetailResult getRanking(
-            @NotNull Long kakaoId,
-            @NotNull String filterType,
-            @Min(1) @Max(100) int size
+           Long kakaoId,
+           String filterType,
+           int size
     ) {
         // 수정 표시
         String normalizedFilterType = filterType.trim().toUpperCase();

@@ -43,14 +43,14 @@ public class StreakService implements RecordStreakInputPort, QueryStreakInputPor
     private final QueryQuizOutputPort queryQuizOutputPort;
 
     @Override
-    public void record(@Valid RecordStreakCommand command) {
+    public void record(RecordStreakCommand command) {
         int attempt = 0;
         while (attempt < MAX_RETRY_COUNT) {
             try {
                 // 수정 표시
                 var gradingLog = queryGradingLogOutputPort.findById(command.gradingLogId());
                 var topicIds = queryQuizOutputPort.findAllByIds(
-                                gradingLog.getResults().stream().map(result -> result.getQuizId()).toList())
+                                gradingLog.getResults().stream().map(result -> result.quizId()).toList())
                         .stream()
                         .flatMap(quiz -> quiz.getTopicIds().stream())
                         .distinct()
@@ -78,7 +78,7 @@ public class StreakService implements RecordStreakInputPort, QueryStreakInputPor
 
     @Override
     @Transactional(readOnly = true)
-    public StreakSummaryResult getSummary(@NotNull Long userId) {
+    public StreakSummaryResult getSummary(Long userId) {
         UserStreak userStreak = loadStreakPort.loadByUserId(userId)
                 .orElseGet(() -> UserStreak.create(userId));
         LocalDate today = LocalDate.now();
@@ -92,7 +92,7 @@ public class StreakService implements RecordStreakInputPort, QueryStreakInputPor
 
     @Override
     @Transactional(readOnly = true)
-    public StreakDetailResult getDetail(@NotNull Long userId) {
+    public StreakDetailResult getDetail(Long userId) {
         UserStreak userStreak = loadStreakPort.loadByUserId(userId)
                 .orElseGet(() -> UserStreak.create(userId));
         LocalDate today = LocalDate.now();
@@ -113,9 +113,9 @@ public class StreakService implements RecordStreakInputPort, QueryStreakInputPor
     @Override
     @Transactional(readOnly = true)
     public StreakMonthlyResult getMonthly(
-            @NotNull Long userId,
-            @Min(2000) int year,
-            @Min(1) @Max(12) int month
+            Long userId,
+            int year,
+            int month
     ) {
         UserStreak userStreak = loadStreakPort.loadByUserId(userId)
                 .orElseGet(() -> UserStreak.create(userId));

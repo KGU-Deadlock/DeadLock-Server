@@ -35,7 +35,7 @@ public class StreakGradingCompletedEventListener {
             }
 
             var quizIds = gradingLog.getResults().stream()
-                    .map(result -> result.getQuizId())
+                    .map(result -> result.quizId())
                     .filter(id -> id != null)
                     .distinct()
                     .toList();
