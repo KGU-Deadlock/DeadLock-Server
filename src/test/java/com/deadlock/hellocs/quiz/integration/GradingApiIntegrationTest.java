@@ -2,11 +2,16 @@ package com.deadlock.hellocs.quiz.integration;
 
 import com.deadlock.hellocs.quiz.grading.adapter.out.persistence.GradingLogRepository;
 import com.deadlock.hellocs.quiz.grading.adapter.out.persistence.entity.GradingLogMongoEntity;
+import com.deadlock.hellocs.quiz.grading.application.port.out.CommandAiGradingOutputPort;
+import com.deadlock.hellocs.quiz.grading.domain.GradingItem;
+import com.deadlock.hellocs.quiz.quiz.domain.Quiz;
 import com.deadlock.hellocs.quiz.quiz.adapter.out.persistence.QuizRepository;
 import com.deadlock.hellocs.quiz.quiz.adapter.out.persistence.entity.QuizMultipleChoiceJpaEntity;
 import com.deadlock.hellocs.quiz.quiz.adapter.out.persistence.entity.QuizOxJpaEntity;
 import com.deadlock.hellocs.quiz.quiz.adapter.out.persistence.entity.QuizShortAnswerJpaEntity;
 import com.deadlock.hellocs.quiz.shared.domain.QuizLevel;
+import com.deadlock.hellocs.ranking.adapter.in.event.RankingGradingCompletedEventListener;
+import com.deadlock.hellocs.streak.adapter.in.event.StreakGradingCompletedEventListener;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -54,6 +59,15 @@ class GradingApiIntegrationTest {
     @MockitoBean
     private GradingLogRepository gradingLogRepository;
 
+    @MockitoBean
+    private RankingGradingCompletedEventListener rankingGradingCompletedEventListener;
+
+    @MockitoBean
+    private StreakGradingCompletedEventListener streakGradingCompletedEventListener;
+
+    @MockitoBean
+    private CommandAiGradingOutputPort commandAiGradingOutputPort;
+
     private final Map<String, GradingLogMongoEntity> storedLogs = new ConcurrentHashMap<>();
 
     private Long oxQuizId;
@@ -66,6 +80,7 @@ class GradingApiIntegrationTest {
         quizRepository.deleteAll();
         seedQuizzes();
         configureGradingLogRepositoryDouble();
+        configureAiGradingDouble();
     }
 
     @Test
@@ -186,6 +201,24 @@ class GradingApiIntegrationTest {
         when(gradingLogRepository.findById(anyString())).thenAnswer(invocation ->
                 Optional.ofNullable(storedLogs.get(invocation.getArgument(0)))
         );
+    }
+
+    private void configureAiGradingDouble() {
+        when(commandAiGradingOutputPort.gradeWithAi(any(Quiz.class), anyString())).thenAnswer(invocation -> {
+            Quiz quiz = invocation.getArgument(0);
+            String userAnswer = invocation.getArgument(1);
+            boolean isCorrect = quiz.getAnswer().asString().equalsIgnoreCase(userAnswer);
+
+            return GradingItem.builder()
+                    .quizId(quiz.getId())
+                    .score(isCorrect ? 100 : 0)
+                    .isCorrect(isCorrect)
+                    .userAnswer(userAnswer)
+                    .feedback("ai-feedback")
+                    .missingKeywords(List.of())
+                    .improvedAnswer(null)
+                    .build();
+        });
     }
 
     private void seedQuizzes() {
