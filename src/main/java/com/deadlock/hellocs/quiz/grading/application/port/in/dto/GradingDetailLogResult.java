@@ -4,6 +4,8 @@ import com.deadlock.hellocs.quiz.grading.domain.GradingItem;
 import com.deadlock.hellocs.quiz.quiz.domain.Quiz;
 import lombok.Builder;
 
+import java.util.List;
+
 @Builder
 public record GradingDetailLogResult(
         Long quizId,
@@ -13,7 +15,9 @@ public record GradingDetailLogResult(
         String quizType,
         String userAnswer,
         String correctAnswer,
-        String feedback
+        String feedback,
+        List<String> missingKeywords,
+        String improvedAnswer
 ) {
     public static GradingDetailLogResult from(GradingItem gradingItem, Quiz quiz) {
         return GradingDetailLogResult.builder()
@@ -25,6 +29,8 @@ public record GradingDetailLogResult(
                 .userAnswer(gradingItem.userAnswer())
                 .correctAnswer(quiz.getAnswer().asString())
                 .feedback(gradingItem.feedback())
+                .missingKeywords(gradingItem.missingKeywords())
+                .improvedAnswer(gradingItem.improvedAnswer())
                 .build();
     }
 }

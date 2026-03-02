@@ -7,6 +7,8 @@ import com.deadlock.hellocs.quiz.shared.domain.QuizType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
+
 /**
  * 표준 채점 정책
  * 
@@ -32,6 +34,8 @@ public class StandardGradingPolicy implements GradingPolicy {
                 .isCorrect(isCorrect)
                 .userAnswer(userAnswer)
                 .feedback(quiz.getExplain())
+                .missingKeywords(List.of())
+                .improvedAnswer(null)
                 .build();
     }
 }
