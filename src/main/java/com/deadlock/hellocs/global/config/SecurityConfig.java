@@ -8,27 +8,12 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.annotation.web.configurers.RequestCacheConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.web.server.util.matcher.PathPatternParserServerWebExchangeMatcher;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import javax.crypto.SecretKey;
-import javax.crypto.spec.SecretKeySpec;
 import java.io.PrintWriter;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -48,45 +33,42 @@ public class SecurityConfig {
     private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) {
-        return http.build();
-    }
-
-    @Bean
-    public WebSecurityCustomizer webSecurityCustomizer() {
-        return web -> web.ignoring().requestMatchers(SWAGGER_WHITELIST);
-    }
-
-    @Bean
-    Customizer<HttpSecurity> oauth2Customizer() {
-        return http -> http
-                .oauth2Login((oauth2) -> oauth2
-                        .redirectionEndpoint((redirection) -> redirection
-                                .baseUri("/api/v1/auth/token")) // 서버가 이 경로로 인가 Code 받아서 Token 받아옴
-                        .successHandler(oAuth2LoginSuccessHandler)
-                );
-    }
-
-    @Bean
-    Customizer<HttpSecurity> jwtCustomizer() {
-        return http -> http
-                .oauth2ResourceServer((oauth2) -> oauth2.jwt(Customizer.withDefaults()));
-    }
-
-    @Bean
-    Customizer<HttpSecurity> defaultRestApiSetting(){
-        return http -> http
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        // 수정 표시
+        http
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .csrf(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
                 .logout(AbstractHttpConfigurer::disable)
                 .requestCache(RequestCacheConfigurer::disable)
-                .sessionManagement(AbstractHttpConfigurer::disable);
-    }
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(authorize -> authorize
+                        // 수정 표시
+                        .requestMatchers(SWAGGER_WHITELIST).permitAll()
+                        // 수정 표시
+                        .requestMatchers("/oauth2/**", "/login/oauth2/**", "/api/v1/auth/token/**").permitAll()
+                        .requestMatchers("/api/v1/dev/**").permitAll()
+                        // 수정 표시
+                        .requestMatchers(HttpMethod.GET, "/api/v1/ranking/summary").permitAll()
+                        // 수정 표시
+                        .requestMatchers(HttpMethod.GET, "/api/v1/ranking").authenticated()
+                        // 수정 표시
+                        .requestMatchers(HttpMethod.GET, "/api/v1/streak").authenticated()
+                        // 수정 표시
+                        .requestMatchers(HttpMethod.GET, "/api/v1/streak/detail").authenticated()
+                        // 수정 표시
+                        .requestMatchers("/api/v1/quiz/**").authenticated()
+                        // 수정 표시
+                        .requestMatchers("/api/v1/quiz/grading/**").authenticated()
+                        .anyRequest().permitAll()
+                )
+                .oauth2Login(oauth2 -> oauth2
+                        .redirectionEndpoint(redirection -> redirection.baseUri("/api/v1/auth/token"))
+                        .successHandler(oAuth2LoginSuccessHandler)
+                )
+                .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()));
 
-    @Bean
-    Customizer<HttpSecurity> exceptionHandler(){
-        return http -> http.exceptionHandling(ex -> ex
+        http.exceptionHandling(ex -> ex
                 .authenticationEntryPoint((req, res, ex1) -> {
                     ErrorStatus errorStatus = ErrorStatus._UNAUTHORIZED;
                     res.setStatus(errorStatus.getReasonHttpStatus().getHttpStatus().value());
@@ -109,5 +91,7 @@ public class SecurityConfig {
                                 errorStatus.getMessage()));
                     }
                 }));
+
+        return http.build();
     }
 }

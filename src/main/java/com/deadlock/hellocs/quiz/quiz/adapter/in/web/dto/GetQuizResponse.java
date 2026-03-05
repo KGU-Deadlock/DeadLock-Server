@@ -6,7 +6,7 @@ import com.deadlock.hellocs.quiz.shared.domain.QuizType;
 public record GetQuizResponse(
         Long id,
         String content,
-        QuizType quizType
+        QuizType type
 ) {
     public static GetQuizResponse from(Quiz quiz) {
         return new GetQuizResponse(quiz.getId(), quiz.getContent(), quiz.getType());

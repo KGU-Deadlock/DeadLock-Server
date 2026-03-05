@@ -2,6 +2,7 @@ package com.deadlock.hellocs.quiz.grading.application.service;
 
 import com.deadlock.hellocs.global.exception.CustomException;
 import com.deadlock.hellocs.quiz.exception.QuizErrorStatus;
+import com.deadlock.hellocs.quiz.grading.application.event.GradingCompletedEvent;
 import com.deadlock.hellocs.quiz.grading.application.policy.GradingPolicy;
 import com.deadlock.hellocs.quiz.grading.application.port.in.CommandAnswerInputPort;
 import com.deadlock.hellocs.quiz.grading.application.port.in.dto.SubmitAnswersCommand;
@@ -13,6 +14,7 @@ import com.deadlock.hellocs.quiz.quiz.application.port.out.QueryQuizOutputPort;
 import com.deadlock.hellocs.quiz.quiz.domain.Quiz;
 import com.deadlock.hellocs.quiz.shared.domain.QuizType;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
@@ -39,6 +41,7 @@ public class GradingCommandService implements CommandAnswerInputPort {
     private final QueryQuizOutputPort queryQuizPort;
     private final CommandGradingLogOutputPort commandGradingLogPort;
     private final List<GradingPolicy> gradingPolicies;
+    private final ApplicationEventPublisher applicationEventPublisher;
     
     @Override
     public String submit(SubmitAnswersCommand command) {
@@ -60,7 +63,17 @@ public class GradingCommandService implements CommandAnswerInputPort {
 
         // 4. 채점 로그 생성 및 저장
         GradingLog gradingLog = GradingLog.create(userId, gradingItems);
-        return commandGradingLogPort.save(gradingLog).getId();
+        GradingLog savedGradingLog = commandGradingLogPort.save(gradingLog);
+
+        applicationEventPublisher.publishEvent(new GradingCompletedEvent(
+                savedGradingLog.getId(),
+                savedGradingLog.getUserId(),
+                savedGradingLog.getSolvedAt(),
+                savedGradingLog.getTotalCount(),
+                savedGradingLog.getResults().stream().mapToInt(GradingItem::score).sum()
+        ));
+
+        return savedGradingLog.getId();
     }
 
     // --- Helper Methods ---

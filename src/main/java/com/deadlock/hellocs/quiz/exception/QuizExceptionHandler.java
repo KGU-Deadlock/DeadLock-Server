@@ -10,6 +10,7 @@ import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindException;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -56,6 +57,23 @@ public class QuizExceptionHandler {
         }
 
         log.warn("퀴즈/채점 요청 바인딩 실패: {}", e.getMessage());
+        return toBadRequestResponse(errorStatus, message);
+    }
+
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ResponseEntity<ApiResponse<Object>> handleHandlerMethodValidationException(HandlerMethodValidationException e) {
+        String declaringClassName = e.getMethod().getDeclaringClass().getName();
+        QuizErrorStatus errorStatus = declaringClassName.startsWith("com.deadlock.hellocs.quiz.grading")
+                ? QuizErrorStatus.GRADING_REQUEST_INVALID
+                : QuizErrorStatus.QUIZ_REQUEST_INVALID;
+        String message = extractMessages(
+                e.getAllErrors().stream().map(error -> error.getDefaultMessage())
+        );
+        if (message.isBlank()) {
+            message = errorStatus.getMessage();
+        }
+
+        log.warn("?댁쫰/梨꾩젏 ?붿껌 ?ㅻⅨ 寃利??ㅽ뙣: {}", e.getMessage());
         return toBadRequestResponse(errorStatus, message);
     }
 

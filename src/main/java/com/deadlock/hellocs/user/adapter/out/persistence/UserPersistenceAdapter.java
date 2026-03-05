@@ -9,6 +9,8 @@ import com.deadlock.hellocs.user.domain.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
+
 @Component
 @RequiredArgsConstructor
 public class UserPersistenceAdapter implements LoadUserPort, SaveUserPort {
@@ -28,6 +30,13 @@ public class UserPersistenceAdapter implements LoadUserPort, SaveUserPort {
         UserJpaJpaEntity userJpaEntity = userRepository.findByNickname(nickname)
                 .orElseThrow(() -> new CustomException(ErrorStatus._USER_NOT_FOUND));
         return userJpaEntity.toDomain();
+    }
+
+    @Override
+    public List<User> loadUsersByKakaoIds(List<Long> kakaoIds) {
+        return userRepository.findByKakaoIdIn(kakaoIds).stream()
+                .map(UserJpaJpaEntity::toDomain)
+                .toList();
     }
 
     @Override

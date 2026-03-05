@@ -1,5 +1,6 @@
 package com.deadlock.hellocs.quiz.quiz.adapter.in.web;
 
+import com.deadlock.hellocs.global.apiPayload.ApiResponse;
 import com.deadlock.hellocs.quiz.quiz.adapter.in.web.dto.GetQuizRequest;
 import com.deadlock.hellocs.quiz.quiz.adapter.in.web.dto.GetQuizResponse;
 import com.deadlock.hellocs.quiz.quiz.application.port.in.QueryQuizInputPort;
@@ -23,15 +24,15 @@ public class QuizController {
     private final LoadUserUseCase loadUserUseCase;
 
     @GetMapping()
-    public List<GetQuizResponse> getQuizzes(
+    public ApiResponse<List<GetQuizResponse>> getQuizzes(
             GetQuizRequest getQuizRequest,
             @AuthenticationPrincipal Jwt jwt
     ) {
         Long kakaoId = Long.valueOf(jwt.getSubject());
         QuizLevel userLevel = loadUserUseCase.getUserLevel(kakaoId);
         GetQuizCommand request = new GetQuizCommand(userLevel, getQuizRequest.topicIds(), getQuizRequest.mode());
-        return queryQuizInputPort.getQuizzes(request).stream()
+        return ApiResponse.onSuccess(queryQuizInputPort.getQuizzes(request).stream()
                 .map(GetQuizResponse::from)
-                .toList();
+                .toList());
     }
 }

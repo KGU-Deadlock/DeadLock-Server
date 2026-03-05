@@ -6,6 +6,8 @@ import com.deadlock.hellocs.global.exception.CustomException;
 import com.deadlock.hellocs.user.application.port.in.ManageUserUseCase;
 import com.deadlock.hellocs.user.application.port.in.CreateUserUseCase;
 import com.deadlock.hellocs.user.application.port.in.LoadUserUseCase;
+import com.deadlock.hellocs.user.application.port.in.LoadUserSummaryUseCase;
+import com.deadlock.hellocs.user.application.port.in.UserSummaryResult;
 import com.deadlock.hellocs.user.application.port.out.LoadTopicPort;
 import com.deadlock.hellocs.user.application.port.out.LoadUserPort;
 import com.deadlock.hellocs.user.application.port.out.SaveUserPort;
@@ -23,7 +25,7 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 @Transactional
-public class UserService implements CreateUserUseCase, LoadUserUseCase, ManageUserUseCase {
+public class UserService implements CreateUserUseCase, LoadUserUseCase, LoadUserSummaryUseCase, ManageUserUseCase {
 
     private final LoadUserPort loadUserPort;
     private final SaveUserPort saveUserPort;
@@ -76,6 +78,21 @@ public class UserService implements CreateUserUseCase, LoadUserUseCase, ManageUs
             }
             throw e;
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public UserSummaryResult getUserSummary(Long kakaoId) {
+        User user = loadUserPort.loadUserByKakaoId(kakaoId);
+        return new UserSummaryResult(user.getKakaoId(), user.getNickname(), user.getProfileImage());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<UserSummaryResult> getUserSummaries(List<Long> kakaoIds) {
+        return loadUserPort.loadUsersByKakaoIds(kakaoIds).stream()
+                .map(user -> new UserSummaryResult(user.getKakaoId(), user.getNickname(), user.getProfileImage()))
+                .toList();
     }
 
     @Override
