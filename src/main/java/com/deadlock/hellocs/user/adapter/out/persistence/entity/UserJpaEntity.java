@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
 @SQLDelete(sql = "UPDATE users SET deleted_at = NOW() WHERE id = ?")
 @SQLRestriction("deleted_at IS NULL")
 @Table(name = "users")
-public class UserJpaJpaEntity extends BaseJpaEntity {
+public class UserJpaEntity extends BaseJpaEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -63,8 +63,8 @@ public class UserJpaJpaEntity extends BaseJpaEntity {
                 .build();
     }
 
-    public static UserJpaJpaEntity from(User user) {
-        UserJpaJpaEntity userJpaEntity = UserJpaJpaEntity.builder()
+    public static UserJpaEntity from(User user) {
+        UserJpaEntity userJpaEntity = UserJpaEntity.builder()
                 .id(user.getId())
                 .nickname(user.getNickname())
                 .kakaoEmail(user.getKakaoEmail())

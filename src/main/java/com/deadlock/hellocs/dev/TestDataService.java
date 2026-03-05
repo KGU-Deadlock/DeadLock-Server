@@ -13,7 +13,7 @@ import com.deadlock.hellocs.streak.adapter.out.persistence.entity.UserStreakMong
 import com.deadlock.hellocs.topic.adapter.out.persistence.TopicRepository;
 import com.deadlock.hellocs.topic.adapter.out.persistence.entity.TopicJpaEntity;
 import com.deadlock.hellocs.user.adapter.out.persistence.UserRepository;
-import com.deadlock.hellocs.user.adapter.out.persistence.entity.UserJpaJpaEntity;
+import com.deadlock.hellocs.user.adapter.out.persistence.entity.UserJpaEntity;
 import com.deadlock.hellocs.user.domain.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -115,7 +115,7 @@ public class TestDataService {
     private int seedUsers(List<SeedUserResolved> users) {
         int created = 0;
         for (SeedUserResolved seedUser : users) {
-            boolean existsByKakaoId = userRepository.findByKakaoId(seedUser.kakaoId()).isPresent();
+            boolean existsByKakaoId = userRepository.existsByKakaoId(seedUser.kakaoId());
             if (existsByKakaoId) {
                 continue;
             }
@@ -129,7 +129,7 @@ public class TestDataService {
                     .interestTopicIds(seedUser.interestTopicIds())
                     .build();
 
-            UserJpaJpaEntity entity = UserJpaJpaEntity.from(user);
+            UserJpaEntity entity = UserJpaEntity.from(user);
             userRepository.save(entity);
             created++;
         }

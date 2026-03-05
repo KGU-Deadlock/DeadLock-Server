@@ -1,9 +1,8 @@
 package com.deadlock.hellocs.user.application.port.in;
 
-import com.deadlock.hellocs.user.adapter.in.web.dto.MyInfoResponse;
-import com.deadlock.hellocs.user.adapter.in.web.dto.UpdateMyInfoRequest;
+import com.deadlock.hellocs.user.application.port.in.dto.UpdateMyInfoCommand;
 
 public interface ManageUserUseCase {
-    MyInfoResponse updateMyInfo(Long kakaoId, UpdateMyInfoRequest request);
+    void updateMyInfo(Long kakaoId, UpdateMyInfoCommand command);
     void deleteMyAccount(Long kakaoId);
 }

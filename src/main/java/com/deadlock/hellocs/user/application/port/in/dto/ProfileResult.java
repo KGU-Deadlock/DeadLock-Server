@@ -1,8 +1,8 @@
-package com.deadlock.hellocs.user.adapter.in.web.dto;
+package com.deadlock.hellocs.user.application.port.in.dto;
 
 import java.util.List;
 
-public record ProfileResponse(
+public record ProfileResult(
         String profileImage,
         String nickname,
         List<String> interests

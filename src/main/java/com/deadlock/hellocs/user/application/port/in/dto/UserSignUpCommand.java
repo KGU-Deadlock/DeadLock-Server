@@ -1,14 +1,14 @@
-package com.deadlock.hellocs.user.adapter.in.web.dto;
+package com.deadlock.hellocs.user.application.port.in.dto;
 
 import com.deadlock.hellocs.quiz.shared.domain.QuizLevel;
-import jakarta.validation.constraints.Size;
 import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import java.util.List;
 
-public record UserSignUpRequest(
+public record UserSignUpCommand(
         @Size(max = 12, message = "닉네임은 최대 12자까지 가능합니다.")
         String nickname,
 
@@ -23,5 +23,6 @@ public record UserSignUpRequest(
         QuizLevel quizLevel,
 
         @NotEmpty(message = "interests는 하나 이상 필수입니다.")
-        List<String> interests
-){}
+        List<@NotNull(message = "interests 항목은 null일 수 없습니다.") Long> interests
+) {
+}

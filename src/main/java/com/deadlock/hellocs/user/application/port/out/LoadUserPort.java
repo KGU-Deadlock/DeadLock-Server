@@ -9,4 +9,5 @@ public interface LoadUserPort {
     User loadUserByNickname(String nickname);
     List<User> loadUsersByKakaoIds(List<Long> kakaoIds);
     boolean existsByNickname(String nickname);
+    boolean existsByKakaoId(Long kakaoId);
 }
