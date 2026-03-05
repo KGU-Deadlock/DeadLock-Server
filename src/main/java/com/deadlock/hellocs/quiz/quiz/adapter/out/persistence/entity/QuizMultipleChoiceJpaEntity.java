@@ -29,8 +29,8 @@ public class QuizMultipleChoiceJpaEntity extends QuizJpaEntity {
     @Column(name = "explain", columnDefinition = "TEXT")
     private String explain;
     
-    @Column(name = "choice", columnDefinition = "INTEGER")
-    private Integer choice;
+    @Column(name = "choice", columnDefinition = "TEXT")
+    private String choice;
     
     @Override
     public Quiz toDomain() {
@@ -45,7 +45,7 @@ public class QuizMultipleChoiceJpaEntity extends QuizJpaEntity {
                 .content(content)
                 .answer(answer)
                 .explain(explain)
-                .choice(choice)
+                .choice(QuizMultipleChoice.splitChoices(choice))
                 .build();
     }
 }
