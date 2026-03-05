@@ -3,8 +3,7 @@ package com.deadlock.hellocs.user.application.service;
 import com.deadlock.hellocs.global.apiPayload.code.status.ErrorStatus;
 import com.deadlock.hellocs.global.exception.CustomException;
 import com.deadlock.hellocs.quiz.shared.domain.QuizLevel;
-import com.deadlock.hellocs.user.adapter.in.web.dto.MyInfoResponse;
-import com.deadlock.hellocs.user.adapter.in.web.dto.UpdateMyInfoRequest;
+import com.deadlock.hellocs.user.application.port.in.dto.UpdateMyInfoCommand;
 import com.deadlock.hellocs.user.application.port.out.LoadTopicPort;
 import com.deadlock.hellocs.user.application.port.out.LoadUserPort;
 import com.deadlock.hellocs.user.application.port.out.SaveUserPort;
@@ -59,11 +58,11 @@ class UserServiceTest {
         when(loadUserPort.loadUserByKakaoId(100L)).thenReturn(user);
         when(loadUserPort.existsByNickname("newNick")).thenReturn(false);
 
-        MyInfoResponse result = userService.updateMyInfo(100L, new UpdateMyInfoRequest("newNick", null));
+        userService.updateMyInfo(100L, new UpdateMyInfoCommand("newNick", null, null));
 
-        assertEquals(1L, result.id());
-        assertEquals("newNick", result.nickname());
-        assertEquals("old-image", result.profileImage());
+        assertEquals("newNick", user.getNickname());
+        assertEquals("old-image", user.getProfileImage());
+        assertEquals(List.of(1L, 2L), user.getInterestTopicIds());
         verify(saveUserPort).saveUser(user);
     }
 
@@ -84,11 +83,53 @@ class UserServiceTest {
 
         CustomException exception = assertThrows(
                 CustomException.class,
-                () -> userService.updateMyInfo(100L, new UpdateMyInfoRequest("takenNick", "new-image"))
+                () -> userService.updateMyInfo(100L, new UpdateMyInfoCommand("takenNick", "new-image", null))
         );
 
         assertEquals(ErrorStatus._NICKNAME_ALREADY_EXISTS, exception.getErrorCode());
         verify(saveUserPort, never()).saveUser(user);
+    }
+
+    @Test
+    void updateMyInfoThrowsWhenNicknameIsBlank() {
+        User user = User.builder()
+                .id(1L)
+                .nickname("oldNick")
+                .profileImage("old-image")
+                .kakaoEmail("test@kakao.com")
+                .kakaoId(100L)
+                .quizLevel(QuizLevel.JUNIOR)
+                .interestTopicIds(List.of(1L, 2L))
+                .build();
+
+        CustomException exception = assertThrows(
+                CustomException.class,
+                () -> userService.updateMyInfo(100L, new UpdateMyInfoCommand("", null, null))
+        );
+
+        assertEquals(ErrorStatus._BAD_REQUEST, exception.getErrorCode());
+        verify(loadUserPort, never()).loadUserByKakaoId(100L);
+        verify(saveUserPort, never()).saveUser(user);
+    }
+
+    @Test
+    void updateMyInfoUpdatesInterestTopicIdsWhenProvided() {
+        User user = User.builder()
+                .id(1L)
+                .nickname("oldNick")
+                .profileImage("old-image")
+                .kakaoEmail("test@kakao.com")
+                .kakaoId(100L)
+                .quizLevel(QuizLevel.JUNIOR)
+                .interestTopicIds(List.of(1L, 2L))
+                .build();
+
+        when(loadUserPort.loadUserByKakaoId(100L)).thenReturn(user);
+
+        userService.updateMyInfo(100L, new UpdateMyInfoCommand(null, null, List.of(11L, 22L)));
+
+        assertEquals(List.of(11L, 22L), user.getInterestTopicIds());
+        verify(saveUserPort).saveUser(user);
     }
 
     @Test

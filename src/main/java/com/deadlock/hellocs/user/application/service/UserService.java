@@ -8,14 +8,13 @@ import com.deadlock.hellocs.user.application.port.in.CreateUserUseCase;
 import com.deadlock.hellocs.user.application.port.in.LoadUserUseCase;
 import com.deadlock.hellocs.user.application.port.in.LoadUserSummaryUseCase;
 import com.deadlock.hellocs.user.application.port.in.UserSummaryResult;
+import com.deadlock.hellocs.user.application.port.in.dto.ProfileResult;
+import com.deadlock.hellocs.user.application.port.in.dto.UpdateMyInfoCommand;
+import com.deadlock.hellocs.user.application.port.in.dto.UserSignUpCommand;
 import com.deadlock.hellocs.user.application.port.out.LoadTopicPort;
 import com.deadlock.hellocs.user.application.port.out.LoadUserPort;
 import com.deadlock.hellocs.user.application.port.out.SaveUserPort;
-import com.deadlock.hellocs.user.adapter.in.web.dto.MyInfoResponse;
 import com.deadlock.hellocs.user.domain.User;
-import com.deadlock.hellocs.user.adapter.in.web.dto.ProfileResponse;
-import com.deadlock.hellocs.user.adapter.in.web.dto.UpdateMyInfoRequest;
-import com.deadlock.hellocs.user.adapter.in.web.dto.UserSignUpRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,32 +31,32 @@ public class UserService implements CreateUserUseCase, LoadUserUseCase, LoadUser
     private final LoadTopicPort loadTopicPort;
 
     @Override
-    public void createUser(Long kakaoId, UserSignUpRequest userInfo) {
-        // 관심사 이름으로 Topic ID 조회
-        List<Long> interestTopicIds = loadTopicPort.getTopicIdsByNames(userInfo.interests());
+    public void createUser(Long kakaoId, UserSignUpCommand command) {
+        if (loadUserPort.existsByKakaoId(kakaoId)) {
+            throw new CustomException(ErrorStatus._USER_ALREADY_EXISTS);
+        }
 
         User user = User.createUser(
                 kakaoId,
-                userInfo.kakaoEmail(),
-                userInfo.nickname(),
-                userInfo.quizLevel()
+                command.kakaoEmail(),
+                command.nickname(),
+                command.profileImage(),
+                command.quizLevel(),
+                command.interests()
         );
-        
-        // 관심사 설정
-        user.updateProfile(user.getNickname(), user.getProfileImage(), interestTopicIds);
 
         saveUserPort.saveUser(user);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public ProfileResponse getProfile(Long kakaoId) {
+    public ProfileResult getProfile(Long kakaoId) {
         User user = loadUserPort.loadUserByKakaoId(kakaoId);
 
         List<Long> interestIds = user.getInterestTopicIds();
         List<String> interests = loadTopicPort.getTopicNamesByIds(interestIds);
 
-        return new ProfileResponse(user.getProfileImage(), user.getNickname(), interests);
+        return new ProfileResult(user.getProfileImage(), user.getNickname(), interests);
     }
 
     @Override
@@ -96,26 +95,33 @@ public class UserService implements CreateUserUseCase, LoadUserUseCase, LoadUser
     }
 
     @Override
-    public MyInfoResponse updateMyInfo(Long kakaoId, UpdateMyInfoRequest request) {
+    public void updateMyInfo(Long kakaoId, UpdateMyInfoCommand command) {
+        validateBlankField(command);
+
         User user = loadUserPort.loadUserByKakaoId(kakaoId);
 
-        if (request.nickname() != null
-                && !request.nickname().equals(user.getNickname())
-                && loadUserPort.existsByNickname(request.nickname())) {
+        if (command.nickname() != null
+                && !command.nickname().equals(user.getNickname())
+                && loadUserPort.existsByNickname(command.nickname())) {
             throw new CustomException(ErrorStatus._NICKNAME_ALREADY_EXISTS);
         }
 
-        String changedNickname = request.nickname() != null ? request.nickname() : user.getNickname();
-        String changedProfileImage = request.profileImage() != null ? request.profileImage() : user.getProfileImage();
-
-        user.updateProfile(changedNickname, changedProfileImage, user.getInterestTopicIds());
+        user.update(command);
         saveUserPort.saveUser(user);
-
-        return MyInfoResponse.from(user);
     }
 
     @Override
     public void deleteMyAccount(Long kakaoId) {
         saveUserPort.deleteUserByKakaoId(kakaoId);
+    }
+
+    private void validateBlankField(UpdateMyInfoCommand command) {
+        if (isBlank(command.nickname()) || isBlank(command.profileImage())) {
+            throw new CustomException(ErrorStatus._BAD_REQUEST);
+        }
+    }
+
+    private boolean isBlank(String value) {
+        return value != null && value.isBlank();
     }
 }

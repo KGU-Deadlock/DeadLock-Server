@@ -9,7 +9,7 @@ import com.deadlock.hellocs.quiz.quiz.adapter.out.persistence.entity.QuizVoiceJp
 import com.deadlock.hellocs.quiz.shared.domain.QuizLevel;
 import com.deadlock.hellocs.quiz.shared.domain.QuizType;
 import com.deadlock.hellocs.user.adapter.out.persistence.UserRepository;
-import com.deadlock.hellocs.user.adapter.out.persistence.entity.UserJpaJpaEntity;
+import com.deadlock.hellocs.user.adapter.out.persistence.entity.UserJpaEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -201,7 +201,7 @@ class QuizApiIntegrationTest {
     private void seedUsers() {
         String nickname = "u" + UUID.randomUUID().toString().substring(0, 8);
         userRepository.save(
-                UserJpaJpaEntity.builder()
+                UserJpaEntity.builder()
                         .nickname(nickname)
                         .kakaoEmail("quiz-test-user@example.com")
                         .kakaoId(100L)

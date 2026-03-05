@@ -19,7 +19,7 @@ public class UserInterestJpaEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
-    private UserJpaJpaEntity userJpaEntity;
+    private UserJpaEntity userJpaEntity;
 
     @Column(name = "topic_id", nullable = false)
     private Long topicId;
