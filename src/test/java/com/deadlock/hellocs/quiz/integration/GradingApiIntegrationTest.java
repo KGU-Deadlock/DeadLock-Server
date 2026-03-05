@@ -239,7 +239,7 @@ class GradingApiIntegrationTest {
                         .topicIds(List.of(201L))
                         .content("multiple-choice-question")
                         .answer(2)
-                        .choice(4)
+                        .choice("multiple-choice-1||multiple-choice-2||multiple-choice-3||multiple-choice-4")
                         .explain("multiple-choice-explain")
                         .build()
         );

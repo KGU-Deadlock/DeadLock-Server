@@ -160,7 +160,7 @@ public class TestDataService {
                     .topicIds(List.of(topicId))
                     .content("[" + topicName + "] Which concept is most closely related?")
                     .answer(2)
-                    .choice(4)
+                    .choice(topicName + " option 1||" + topicName + " option 2||" + topicName + " option 3||" + topicName + " option 4")
                     .explain("Answer 2 is typically associated with " + topicName + ".")
                     .build());
 

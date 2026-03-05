@@ -7,19 +7,36 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
+import java.util.List;
+import java.util.regex.Pattern;
+
 @Getter
 @SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
 public class QuizMultipleChoice extends Quiz {
+    private static final String CHOICE_DELIMITER = "||";
+
     private String content;
     private Integer answer;
     private String explain;
-    private Integer choice;
+    private List<String> choice;
     
     @Override
     public QuizAnswer getAnswer() {
         return MultipleChoiceAnswer.of(answer);
+    }
+
+    public static List<String> splitChoices(String rawChoice) {
+        if (rawChoice == null || rawChoice.isBlank()) {
+            return List.of();
+        }
+
+        return Pattern.compile(Pattern.quote(CHOICE_DELIMITER))
+                .splitAsStream(rawChoice)
+                .map(String::trim)
+                .filter(option -> !option.isBlank())
+                .toList();
     }
     
     @Override

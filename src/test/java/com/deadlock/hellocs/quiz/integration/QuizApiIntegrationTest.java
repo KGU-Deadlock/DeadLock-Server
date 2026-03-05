@@ -84,6 +84,17 @@ class QuizApiIntegrationTest {
         assertEquals(2, typeCount.getOrDefault(QuizType.OX.name(), 0));
         assertEquals(2, typeCount.getOrDefault(QuizType.MULTIPLE_CHOICE.name(), 0));
         assertEquals(1, typeCount.getOrDefault(QuizType.SHORT_ANSWER.name(), 0));
+
+        for (JsonNode quiz : data) {
+            JsonNode choices = quiz.get("choices");
+            assertNotNull(choices);
+            if (QuizType.MULTIPLE_CHOICE.name().equals(quiz.get("type").asText())) {
+                assertTrue(choices.isArray());
+                assertEquals(4, choices.size());
+            } else {
+                assertTrue(choices.isEmpty());
+            }
+        }
     }
 
     @Test
@@ -153,7 +164,7 @@ class QuizApiIntegrationTest {
                         .topicIds(List.of(101L))
                         .content("mc-1")
                         .answer(2)
-                        .choice(4)
+                        .choice("mc-1-a||mc-1-b||mc-1-c||mc-1-d")
                         .explain("mc-1 explain")
                         .build(),
                 QuizMultipleChoiceJpaEntity.builder()
@@ -161,7 +172,7 @@ class QuizApiIntegrationTest {
                         .topicIds(List.of(102L))
                         .content("mc-2")
                         .answer(3)
-                        .choice(4)
+                        .choice("mc-2-a||mc-2-b||mc-2-c||mc-2-d")
                         .explain("mc-2 explain")
                         .build(),
                 QuizShortAnswerJpaEntity.builder()

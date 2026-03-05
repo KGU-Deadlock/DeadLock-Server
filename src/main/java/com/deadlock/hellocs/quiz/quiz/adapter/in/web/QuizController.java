@@ -10,9 +10,7 @@ import com.deadlock.hellocs.user.application.port.in.LoadUserUseCase;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -23,9 +21,9 @@ public class QuizController {
     private final QueryQuizInputPort queryQuizInputPort;
     private final LoadUserUseCase loadUserUseCase;
 
-    @GetMapping()
+    @PostMapping()
     public ApiResponse<List<GetQuizResponse>> getQuizzes(
-            GetQuizRequest getQuizRequest,
+            @RequestBody GetQuizRequest getQuizRequest,
             @AuthenticationPrincipal Jwt jwt
     ) {
         Long kakaoId = Long.valueOf(jwt.getSubject());
