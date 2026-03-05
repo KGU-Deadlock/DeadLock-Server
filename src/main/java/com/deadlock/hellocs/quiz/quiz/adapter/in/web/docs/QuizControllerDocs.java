@@ -2,17 +2,17 @@ package com.deadlock.hellocs.quiz.quiz.adapter.in.web.docs;
 
 import com.deadlock.hellocs.global.apiPayload.ApiResponse;
 import com.deadlock.hellocs.quiz.quiz.adapter.in.web.dto.GetQuizRequest;
-import com.deadlock.hellocs.quiz.quiz.domain.Quiz;
+import com.deadlock.hellocs.quiz.quiz.application.port.in.dto.GetQuizResult;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springdoc.core.annotations.ParameterObject;
+import jakarta.validation.Valid;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
-
-import java.util.List;
+import org.springframework.web.bind.annotation.RequestBody;
 
 @Tag(name = "Quiz", description = "퀴즈 조회 API")
 @SecurityRequirement(name = "bearerAuth")
@@ -37,11 +37,11 @@ public interface QuizControllerDocs {
                     content = @Content
             )
     })
-    ApiResponse<List<Quiz>> getQuizzes(
-            @ParameterObject
+    ApiResponse<GetQuizResult> getQuizzes(
             @Parameter(description = "퀴즈 조회 필터(주제 ID 목록, 문제 모드)")
-            GetQuizRequest getQuizRequest,
+            @RequestBody @Valid GetQuizRequest getQuizRequest,
             @Parameter(hidden = true, description = "인증 사용자 JWT")
+            @AuthenticationPrincipal
             Jwt jwtUser
     );
 }
