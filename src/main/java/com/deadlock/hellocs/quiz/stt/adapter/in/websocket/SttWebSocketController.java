@@ -24,7 +24,7 @@ public class SttWebSocketController {
         SttChunkResult result = commandSttStreamInputPort.process(command);
         messagingTemplate.convertAndSend(
                 STT_SUBSCRIBE_PREFIX + result.sessionId(),
-                ApiResponse.onSuccess(result)
+                result
         );
     }
 }
