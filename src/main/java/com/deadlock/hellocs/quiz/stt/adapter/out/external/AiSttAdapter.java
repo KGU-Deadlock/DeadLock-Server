@@ -8,11 +8,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
 
+import java.net.http.HttpClient;
 import java.util.Base64;
 
 @Component
@@ -23,7 +25,6 @@ public class AiSttAdapter implements CommandSttAiOutputPort {
     @Value("${ai.stt.transcribe-endpoint}")
     private String transcribeEndpoint;
 
-    private final RestClient.Builder restClientBuilder;
 
     @Override
     public String transcribeChunk(SttChunkCommand command) {
@@ -35,7 +36,15 @@ public class AiSttAdapter implements CommandSttAiOutputPort {
         body.add("task", "transcribe");
 
         try {
-            SttTranscribeResponse response = restClientBuilder.build()
+            HttpClient httpClient = HttpClient.newBuilder()
+                    .version(HttpClient.Version.HTTP_1_1)
+                    .build();
+
+            RestClient restClient = RestClient.builder()
+                    .requestFactory(new JdkClientHttpRequestFactory(httpClient))
+                    .build();
+
+            SttTranscribeResponse response = restClient
                     .post()
                     .uri(transcribeEndpoint)
                     .contentType(MediaType.MULTIPART_FORM_DATA)

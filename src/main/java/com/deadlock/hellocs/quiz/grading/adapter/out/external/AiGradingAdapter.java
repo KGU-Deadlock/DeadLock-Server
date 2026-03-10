@@ -10,9 +10,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import java.net.http.HttpClient;
 import java.util.List;
 
 /**
@@ -24,8 +26,6 @@ import java.util.List;
 @Slf4j
 @RequiredArgsConstructor
 public class AiGradingAdapter implements CommandAiGradingOutputPort {
-
-    private final RestClient.Builder restClientBuilder;
 
     @Value("${ai.grading.evaluate-endpoint}")
     private String evaluateEndpoint;
@@ -54,8 +54,15 @@ public class AiGradingAdapter implements CommandAiGradingOutputPort {
 
     private FeedbackResponse evaluate(FeedbackRequest request) {
         try {
-            FeedbackResponse response = restClientBuilder.build()
-                    .post()
+            HttpClient httpClient = HttpClient.newBuilder()
+                    .version(HttpClient.Version.HTTP_1_1)
+                    .build();
+
+            RestClient restClient = RestClient.builder()
+                    .requestFactory(new JdkClientHttpRequestFactory(httpClient))
+                    .build();
+
+            FeedbackResponse response = restClient.post()
                     .uri(evaluateEndpoint)
                     .contentType(MediaType.APPLICATION_JSON)
                     .accept(MediaType.APPLICATION_JSON)
@@ -67,9 +74,7 @@ public class AiGradingAdapter implements CommandAiGradingOutputPort {
                 throw new CustomException(QuizErrorStatus.GRADING_AI_EVALUATION_FAILED);
             }
             return response;
-        } catch (CustomException e) {
-            throw e;
-        } catch (RuntimeException e) {
+        } catch (Exception e) {
             log.error("AI grading request failed. endpoint={}", evaluateEndpoint, e);
             throw new CustomException(QuizErrorStatus.GRADING_AI_EVALUATION_FAILED);
         }
