@@ -1,6 +1,7 @@
 package com.deadlock.hellocs.topic.application.service;
 
 import com.deadlock.hellocs.topic.application.port.in.LoadTopicUseCase;
+import com.deadlock.hellocs.topic.application.port.in.dto.TopicResult;
 import com.deadlock.hellocs.topic.application.port.out.LoadTopicPort;
 import com.deadlock.hellocs.topic.domain.Topic;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +35,13 @@ public class LoadTopicService implements LoadTopicUseCase {
     public List<Long> getTopicIdsByNames(List<String> names) {
         return loadTopicPort.loadTopicsByNames(names).stream()
                 .map(Topic::getId)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<TopicResult> getAllTopics() {
+        return loadTopicPort.loadAllTopics().stream()
+                .map(TopicResult::from)
                 .collect(Collectors.toList());
     }
 }

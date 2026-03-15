@@ -34,4 +34,11 @@ public class TopicPersistenceAdapter implements LoadTopicPort {
                 .map(TopicJpaEntity::toDomain)
                 .collect(Collectors.toList());
     }
+
+    @Override
+    public List<Topic> loadAllTopics() {
+        return topicRepository.findAll().stream()
+                .map(TopicJpaEntity::toDomain)
+                .collect(Collectors.toList());
+    }
 }
