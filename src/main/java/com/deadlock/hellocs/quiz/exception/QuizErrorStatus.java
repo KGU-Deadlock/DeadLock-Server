@@ -13,6 +13,7 @@ public enum QuizErrorStatus implements BaseErrorCode {
     QUIZ_POLICY_NOT_FOUND(HttpStatus.INTERNAL_SERVER_ERROR, "QUIZ5001", "요청한 모드에 대한 퀴즈 생성 정책을 찾을 수 없습니다."),
     QUIZ_NOT_FOUND(HttpStatus.NOT_FOUND, "QUIZ4041", "퀴즈를 찾을 수 없습니다."),
 
+    GRADING_ACCESS_DENIED(HttpStatus.FORBIDDEN, "GRADING4031", "해당 채점 기록에 대한 접근 권한이 없습니다."),
     GRADING_REQUEST_INVALID(HttpStatus.BAD_REQUEST, "GRADING4001", "채점 요청이 올바르지 않습니다."),
     GRADING_LOG_NOT_FOUND(HttpStatus.NOT_FOUND, "GRADING4041", "채점 기록을 찾을 수 없습니다."),
     GRADING_RESULT_NOT_FOUND(HttpStatus.NOT_FOUND, "GRADING4042", "해당 퀴즈의 채점 결과를 찾을 수 없습니다."),

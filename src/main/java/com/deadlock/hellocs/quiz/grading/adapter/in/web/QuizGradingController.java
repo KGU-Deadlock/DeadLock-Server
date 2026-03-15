@@ -43,21 +43,25 @@ public class QuizGradingController implements QuizGradingControllerDocs {
     @GetMapping("/{gradingLogId}")
     @Override
     public ApiResponse<GradingLogResult> getGradingLog(
+            @AuthenticationPrincipal Jwt jwt,
             @PathVariable String gradingLogId
     ) {
+        Long requesterId = Long.valueOf(jwt.getSubject());
         return ApiResponse.onSuccess(
-                queryGradingLogInputPort.getGradingLog(new GetGradingLogCommand(gradingLogId))
+                queryGradingLogInputPort.getGradingLog(requesterId, new GetGradingLogCommand(gradingLogId))
         );
     }
 
     @GetMapping("/{gradingLogId}/{quizId}")
     @Override
     public ApiResponse<GradingDetailLogResult> getGradingDetailLog(
+            @AuthenticationPrincipal Jwt jwt,
             @PathVariable String gradingLogId,
             @PathVariable Long quizId
     ) {
+        Long requesterId = Long.valueOf(jwt.getSubject());
         return ApiResponse.onSuccess(
-                queryGradingLogInputPort.getGradingDetailLog(new GetGradingDetailLogCommand(gradingLogId, quizId))
+                queryGradingLogInputPort.getGradingDetailLog(requesterId, new GetGradingDetailLogCommand(gradingLogId, quizId))
         );
     }
 }

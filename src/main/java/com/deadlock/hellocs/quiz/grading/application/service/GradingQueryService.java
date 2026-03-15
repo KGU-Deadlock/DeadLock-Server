@@ -37,13 +37,14 @@ public class GradingQueryService implements QueryGradingLogInputPort {
     private final QueryQuizOutputPort queryQuizOutputPort;
 
     @Override
-    public GradingLogResult getGradingLog(GetGradingLogCommand command) {
+    public GradingLogResult getGradingLog(Long requesterId, GetGradingLogCommand command) {
         if (command == null) {
             throw new CustomException(QuizErrorStatus.GRADING_REQUEST_INVALID);
         }
         String gradingLogId = command.gradingLogId();
 
         GradingLog gradingLog = queryGradingLogPort.findById(gradingLogId);
+        validateOwnership(gradingLog, requesterId);
         List<Long> quizIds = gradingLog.getResults().stream()
                 .map(GradingItem::quizId)
                 .toList();
@@ -54,7 +55,7 @@ public class GradingQueryService implements QueryGradingLogInputPort {
     }
 
     @Override
-    public GradingDetailLogResult getGradingDetailLog(GetGradingDetailLogCommand command) {
+    public GradingDetailLogResult getGradingDetailLog(Long requesterId, GetGradingDetailLogCommand command) {
         if (command == null) {
             throw new CustomException(QuizErrorStatus.GRADING_REQUEST_INVALID);
         }
@@ -62,12 +63,19 @@ public class GradingQueryService implements QueryGradingLogInputPort {
         Long quizId = command.quizId();
 
         GradingLog gradingLog = queryGradingLogPort.findById(gradingLogId);
+        validateOwnership(gradingLog, requesterId);
         GradingItem result = getGradingResult(gradingLog, quizId);
         Quiz quiz = loadQuiz(quizId);
 
         return GradingDetailLogResult.from(result, quiz);
     }
     // --- Helper Methods ---
+
+    private void validateOwnership(GradingLog gradingLog, Long userId) {
+        if (!gradingLog.getUserId().equals(userId)) {
+            throw new CustomException(QuizErrorStatus.GRADING_ACCESS_DENIED);
+        }
+    }
 
     private void validateLoadedQuizzes(List<Long> quizIds, List<Quiz> quizzes) {
         long uniqueQuizIdCount = quizIds.stream().distinct().count();
