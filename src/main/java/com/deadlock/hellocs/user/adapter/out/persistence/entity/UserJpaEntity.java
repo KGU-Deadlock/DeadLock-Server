@@ -1,6 +1,7 @@
 package com.deadlock.hellocs.user.adapter.out.persistence.entity;
 
 import com.deadlock.hellocs.quiz.shared.domain.QuizLevel;
+import com.deadlock.hellocs.user.domain.Role;
 import com.deadlock.hellocs.user.domain.User;
 import com.deadlock.hellocs.global.entity.BaseJpaEntity;
 import jakarta.persistence.*;
@@ -45,6 +46,11 @@ public class UserJpaEntity extends BaseJpaEntity {
     @Column(name = "quiz_level")
     private QuizLevel quizLevel;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role", nullable = false)
+    @Builder.Default
+    private Role role = Role.USER;
+
     @OneToMany(mappedBy = "userJpaEntity", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<UserInterestJpaEntity> interests = new ArrayList<>();
@@ -57,6 +63,7 @@ public class UserJpaEntity extends BaseJpaEntity {
                 .kakaoId(this.kakaoId)
                 .profileImage(this.profileImage)
                 .quizLevel(this.quizLevel)
+                .role(this.role)
                 .interestTopicIds(this.interests.stream()
                         .map(UserInterestJpaEntity::getTopicId)
                         .collect(Collectors.toList()))
@@ -71,6 +78,7 @@ public class UserJpaEntity extends BaseJpaEntity {
                 .kakaoId(user.getKakaoId())
                 .profileImage(user.getProfileImage())
                 .quizLevel(user.getQuizLevel())
+                .role(user.getRole())
                 .interests(new ArrayList<>())
                 .build();
 

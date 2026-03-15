@@ -20,6 +20,8 @@ public class User {
     private String profileImage;
     private QuizLevel quizLevel;
     @Builder.Default
+    private Role role = Role.USER;
+    @Builder.Default
     private List<Long> interestTopicIds = new ArrayList<>();
 
     public static User createUser(Long kakaoId,
@@ -34,6 +36,7 @@ public class User {
                 .nickname(nickname)
                 .profileImage(profileImage)
                 .quizLevel(quizLevel)
+                .role(Role.USER)
                 .interestTopicIds(interestTopicIds == null ? new ArrayList<>() : new ArrayList<>(interestTopicIds))
                 .build();
     }

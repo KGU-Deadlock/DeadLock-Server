@@ -1,6 +1,7 @@
 package com.deadlock.hellocs.user.application.service;
 
 import com.deadlock.hellocs.quiz.shared.domain.QuizLevel;
+import com.deadlock.hellocs.user.domain.Role;
 import com.deadlock.hellocs.global.apiPayload.code.status.ErrorStatus;
 import com.deadlock.hellocs.global.exception.CustomException;
 import com.deadlock.hellocs.user.application.port.in.ManageUserUseCase;
@@ -63,6 +64,13 @@ public class UserService implements CreateUserUseCase, LoadUserUseCase, LoadUser
     public QuizLevel getUserLevel(Long kakaoId) {
         User user = loadUserPort.loadUserByKakaoId(kakaoId);
         return user.getQuizLevel();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Role getUserRole(Long kakaoId) {
+        User user = loadUserPort.loadUserByKakaoId(kakaoId);
+        return user.getRole();
     }
 
     @Override
