@@ -1,6 +1,7 @@
 package com.deadlock.hellocs.user.adapter.in.web;
 
 import com.deadlock.hellocs.global.jwt.JwtTokenProvider;
+import com.deadlock.hellocs.user.adapter.in.web.docs.UserControllerDocs;
 import com.deadlock.hellocs.user.application.port.in.CreateUserUseCase;
 import com.deadlock.hellocs.user.application.port.in.LoadUserUseCase;
 import com.deadlock.hellocs.user.application.port.in.ManageUserUseCase;
@@ -19,7 +20,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
-public class UserController {
+public class UserController implements UserControllerDocs {
 
     private final CreateUserUseCase createUserUseCase;
     private final LoadUserUseCase loadUserUseCase;
