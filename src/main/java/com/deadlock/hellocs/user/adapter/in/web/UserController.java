@@ -61,7 +61,7 @@ public class UserController implements UserControllerDocs {
         Long kakaoId = 1L;
         Authentication authentication = new UsernamePasswordAuthenticationToken(kakaoId.toString(), null);
 
-        String accessToken = jwtTokenProvider.createAccessToken(authentication);
+        String accessToken = jwtTokenProvider.createAccessToken(authentication, "ADMIN");
         String refreshToken = jwtTokenProvider.createRefreshToken(authentication);
         boolean isUser = loadUserUseCase.isExist(kakaoId);
 

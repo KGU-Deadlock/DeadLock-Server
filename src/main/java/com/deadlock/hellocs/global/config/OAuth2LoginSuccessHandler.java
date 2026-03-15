@@ -26,13 +26,13 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
         Long kakaoId = Long.valueOf(oAuth2User.getName());
 
-        String accessToken = jwtTokenProvider.createAccessToken(authentication);
+        boolean isUser = loadUserUseCase.isExist(kakaoId);
+        String role = isUser ? loadUserUseCase.getUserRole(kakaoId).name() : null;
+
+        String accessToken = jwtTokenProvider.createAccessToken(authentication, role);
         String refreshToken = jwtTokenProvider.createRefreshToken(authentication);
 
-        Oauth2Response responseData = new Oauth2Response(accessToken, refreshToken, false);
-        if(loadUserUseCase.isExist(kakaoId)) {
-            responseData = new Oauth2Response(accessToken, refreshToken, true);
-        }
+        Oauth2Response responseData = new Oauth2Response(accessToken, refreshToken, isUser);
         objectMapper.writeValue(response.getWriter(), responseData);
     }
 

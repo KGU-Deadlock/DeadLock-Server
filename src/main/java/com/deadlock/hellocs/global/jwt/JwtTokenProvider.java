@@ -33,17 +33,26 @@ public class JwtTokenProvider {
         this.refreshValidity = refreshValidity;
     }
 
-    public String createAccessToken(Authentication authentication) {
-        return createToken(authentication, accessValidity);
+    public String createAccessToken(Authentication authentication, String role) {
+        Date now = new Date();
+        Date validityBy = new Date(now.getTime() + accessValidity);
+
+        JwtBuilder builder = Jwts.builder()
+                .subject(authentication.getName())
+                .issuedAt(now)
+                .expiration(validityBy)
+                .signWith(key);
+
+        if (role != null) {
+            builder.claim("role", role);
+        }
+
+        return builder.compact();
     }
 
     public String createRefreshToken(Authentication authentication) {
-        return createToken(authentication, refreshValidity);
-    }
-
-    private String createToken(Authentication authentication, long validity) {
         Date now = new Date();
-        Date validityBy = new Date(now.getTime() + validity);
+        Date validityBy = new Date(now.getTime() + refreshValidity);
 
         return Jwts.builder()
                 .subject(authentication.getName())
