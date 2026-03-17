@@ -1,6 +1,7 @@
 package com.deadlock.hellocs.global.config;
 
 import com.deadlock.hellocs.global.apiPayload.code.status.ErrorStatus;
+import com.deadlock.hellocs.global.auth.handler.OAuth2LoginSuccessHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,6 +15,7 @@ import org.springframework.security.config.annotation.web.configurers.RequestCac
 import org.springframework.security.web.SecurityFilterChain;
 
 import java.io.PrintWriter;
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -70,7 +72,7 @@ public class SecurityConfig {
         return http -> http
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(SWAGGER_WHITELIST).permitAll()
-                        .requestMatchers("/oauth2/**", "/login/oauth2/**", "/api/v1/auth/token/**").permitAll()
+                        .requestMatchers("/oauth2/**", "/login/oauth2/**", "/api/v1/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/topics").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/ranking/summary").permitAll()
                         .requestMatchers("/api/v1/dev/**").permitAll()
