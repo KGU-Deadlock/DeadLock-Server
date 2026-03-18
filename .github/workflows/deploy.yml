@@ -22,6 +22,14 @@ jobs:
         shell: bash
         run: |
           cat > .env << 'EOF'
+          SERVER_PORT=8080
+          SPRING_PROFILES_ACTIVE=prod
+          POSTGRES_HOST=postgres
+          POSTGRES_PORT=5432
+          REDIS_HOST=redis
+          REDIS_PORT=6379
+          MANAGEMENT_PORT=8081
+
           APP_PORT=${{ secrets.APP_PORT }}
           GRAFANA_PORT=${{ secrets.GRAFANA_PORT }}
           GRAFANA_ROOT_URL=${{ secrets.GRAFANA_ROOT_URL }}
@@ -76,4 +84,3 @@ jobs:
           curl -fsS -H 'Content-Type: application/json' \
             -d "{\"content\":\"❌ Deploy failed: \`${{ github.repository }}@${{ github.sha }}\` (${GITHUB_REF_NAME})\\nActions: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
             "${{ secrets.DISCORD_WEBHOOK_URL }}"
-            
