@@ -37,7 +37,7 @@ jobs:
             echo "POSTGRES_USER=${{ secrets.POSTGRES_USER }}"
             echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}"
             echo "REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}"
-            echo "REDIS_TIMEOUT=${{ secrets.REDIS_TIMEOUT }}"
+            echo "REDIS_TIMEOUT: ${REDIS_TIMEOUT:-3s}"
             echo "MONGO_DB=${{ secrets.MONGO_DB }}"
             echo "MONGO_INITDB_ROOT_USERNAME=${{ secrets.MONGO_INITDB_ROOT_USERNAME }}"
             echo "MONGO_INITDB_ROOT_PASSWORD=${{ secrets.MONGO_INITDB_ROOT_PASSWORD }}"
