@@ -64,6 +64,11 @@ public interface QuizGradingControllerDocs {
                     content = @Content
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "403",
+                    description = "해당 채점 기록에 대한 접근 권한 없음",
+                    content = @Content
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "404",
                     description = "채점 로그를 찾을 수 없음",
                     content = @Content
@@ -75,6 +80,7 @@ public interface QuizGradingControllerDocs {
             )
     })
     ApiResponse<GradingLogResult> getGradingLog(
+            @Parameter(hidden = true) Jwt jwt,
             @Parameter(description = "채점 로그 ID", required = true)
             String gradingLogId
     );
@@ -85,6 +91,11 @@ public interface QuizGradingControllerDocs {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "401",
                     description = "인증 실패",
+                    content = @Content
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "403",
+                    description = "해당 채점 기록에 대한 접근 권한 없음",
                     content = @Content
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -99,6 +110,7 @@ public interface QuizGradingControllerDocs {
             )
     })
     ApiResponse<GradingDetailLogResult> getGradingDetailLog(
+            @Parameter(hidden = true) Jwt jwt,
             @Parameter(description = "채점 로그 ID", required = true)
             String gradingLogId,
             @Parameter(description = "퀴즈 ID", required = true)
