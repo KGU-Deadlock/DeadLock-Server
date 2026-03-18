@@ -80,6 +80,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/quiz/**").authenticated()
                         .requestMatchers("/api/v1/ranking/**").authenticated()
                         .requestMatchers("/api/v1/streak/**").authenticated()
+                        .requestMatchers("/actuator/**").permitAll()
                         .anyRequest().denyAll()
                 );
     }
