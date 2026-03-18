@@ -1,6 +1,3 @@
-heredoc이 YAML 문법과 충돌합니다. `echo` 방식으로 변경:
-
-```yaml
 name: Deploy to GCP VM (Docker Compose)
 
 on:
@@ -81,4 +78,3 @@ jobs:
           curl -fsS -H 'Content-Type: application/json' \
             -d "{\"content\":\"❌ Deploy failed: \`${{ github.repository }}@${{ github.sha }}\` (${GITHUB_REF_NAME})\\nActions: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
             "${{ secrets.DISCORD_WEBHOOK_URL }}"
-```
