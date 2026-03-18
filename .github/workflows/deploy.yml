@@ -22,50 +22,44 @@ jobs:
         shell: bash
         run: |
           cat > .env << 'EOF'
-          SERVER_PORT=8080
-          SPRING_PROFILES_ACTIVE=prod
-          POSTGRES_HOST=postgres
-          POSTGRES_PORT=5432
-          REDIS_HOST=redis
-          REDIS_PORT=6379
-          MANAGEMENT_PORT=8081
-
-          APP_PORT=${{ secrets.APP_PORT }}
-          GRAFANA_PORT=${{ secrets.GRAFANA_PORT }}
-          GRAFANA_ROOT_URL=${{ secrets.GRAFANA_ROOT_URL }}
-          JAVA_OPTS=${{ secrets.JAVA_OPTS }}
-
-          POSTGRES_DB=${{ secrets.POSTGRES_DB }}
-          POSTGRES_USER=${{ secrets.POSTGRES_USER }}
-          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
-
-          REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
-          REDIS_TIMEOUT=${{ secrets.REDIS_TIMEOUT }}
-
-          MONGO_DB=${{ secrets.MONGO_DB }}
-          MONGO_INITDB_ROOT_USERNAME=${{ secrets.MONGO_INITDB_ROOT_USERNAME }}
-          MONGO_INITDB_ROOT_PASSWORD=${{ secrets.MONGO_INITDB_ROOT_PASSWORD }}
-          MONGO_URI=${{ secrets.MONGO_URI }}
-
-          KAKAO_CLIENT_ID=${{ secrets.KAKAO_CLIENT_ID }}
-          KAKAO_CLIENT_SECRET=${{ secrets.KAKAO_CLIENT_SECRET }}
-          KAKAO_REDIRECT_URI=${{ secrets.KAKAO_REDIRECT_URI }}
-
-          JWT_SECRET=${{ secrets.JWT_SECRET }}
-          JWT_ACCESS_TOKEN_EXPIRATION=${{ secrets.JWT_ACCESS_TOKEN_EXPIRATION }}
-          JWT_REFRESH_TOKEN_EXPIRATION=${{ secrets.JWT_REFRESH_TOKEN_EXPIRATION }}
-
-          AI_GRADING_EVALUATE_ENDPOINT=${{ secrets.AI_GRADING_EVALUATE_ENDPOINT }}
-          AI_STT_TRANSCRIBE_ENDPOINT=${{ secrets.AI_STT_TRANSCRIBE_ENDPOINT }}
-
-          GRAFANA_ADMIN_USER=${{ secrets.GRAFANA_ADMIN_USER }}
-          GRAFANA_ADMIN_PASSWORD=${{ secrets.GRAFANA_ADMIN_PASSWORD }}
-          EOF
+SERVER_PORT=8080
+SPRING_PROFILES_ACTIVE=dev
+POSTGRES_HOST=postgres
+POSTGRES_PORT=5432
+REDIS_HOST=redis
+REDIS_PORT=6379
+MANAGEMENT_PORT=8081
+APP_PORT=${{ secrets.APP_PORT }}
+GRAFANA_PORT=${{ secrets.GRAFANA_PORT }}
+GRAFANA_ROOT_URL=${{ secrets.GRAFANA_ROOT_URL }}
+JAVA_OPTS=${{ secrets.JAVA_OPTS }}
+POSTGRES_DB=${{ secrets.POSTGRES_DB }}
+POSTGRES_USER=${{ secrets.POSTGRES_USER }}
+POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
+REDIS_TIMEOUT=${{ secrets.REDIS_TIMEOUT }}
+MONGO_DB=${{ secrets.MONGO_DB }}
+MONGO_INITDB_ROOT_USERNAME=${{ secrets.MONGO_INITDB_ROOT_USERNAME }}
+MONGO_INITDB_ROOT_PASSWORD=${{ secrets.MONGO_INITDB_ROOT_PASSWORD }}
+MONGO_URI=${{ secrets.MONGO_URI }}
+KAKAO_CLIENT_ID=${{ secrets.KAKAO_CLIENT_ID }}
+KAKAO_CLIENT_SECRET=${{ secrets.KAKAO_CLIENT_SECRET }}
+KAKAO_REDIRECT_URI=${{ secrets.KAKAO_REDIRECT_URI }}
+JWT_SECRET=${{ secrets.JWT_SECRET }}
+JWT_ACCESS_TOKEN_EXPIRATION=${{ secrets.JWT_ACCESS_TOKEN_EXPIRATION }}
+JWT_REFRESH_TOKEN_EXPIRATION=${{ secrets.JWT_REFRESH_TOKEN_EXPIRATION }}
+AI_GRADING_EVALUATE_ENDPOINT=${{ secrets.AI_GRADING_EVALUATE_ENDPOINT }}
+AI_STT_TRANSCRIBE_ENDPOINT=${{ secrets.AI_STT_TRANSCRIBE_ENDPOINT }}
+GRAFANA_ADMIN_USER=${{ secrets.GRAFANA_ADMIN_USER }}
+GRAFANA_ADMIN_PASSWORD=${{ secrets.GRAFANA_ADMIN_PASSWORD }}
+EOF
 
       - name: Deploy (docker compose up)
         shell: bash
         run: |
           set -euo pipefail
+          cp .env /workspace/DeadLock-Server/.env
+          cd /workspace/DeadLock-Server
           docker compose up -d --build
           docker compose ps
 
