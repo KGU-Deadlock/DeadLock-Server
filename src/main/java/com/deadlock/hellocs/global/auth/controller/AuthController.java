@@ -48,5 +48,12 @@ public class AuthController implements AuthControllerDocs {
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
 
+    @GetMapping("/token")
+    public void kakaoCallback(@RequestParam String code, @RequestParam String state) {
+        // Spring Security OAuth2가 실제로 처리하므로 이 메서드는 호출되지 않습니다.
+        // Swagger 명세 전용 엔드포인트입니다.
+    }
+
     public record ReissueResponse(String accessToken) {}
+    public record OAuth2TokenResponse(String accessToken, boolean isUser) {}
 }
