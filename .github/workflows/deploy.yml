@@ -1,0 +1,94 @@
+name: Deploy to GCP VM (Docker Compose)
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare .env for server
+        shell: bash
+        run: |
+          cat > .env << 'EOF'
+          APP_PORT=${{ secrets.APP_PORT }}
+          GRAFANA_PORT=${{ secrets.GRAFANA_PORT }}
+          GRAFANA_ROOT_URL=${{ secrets.GRAFANA_ROOT_URL }}
+          JAVA_OPTS=${{ secrets.JAVA_OPTS }}
+
+          POSTGRES_DB=${{ secrets.POSTGRES_DB }}
+          POSTGRES_USER=${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+
+          REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
+          REDIS_TIMEOUT=${{ secrets.REDIS_TIMEOUT }}
+
+          MONGO_DB=${{ secrets.MONGO_DB }}
+          MONGO_INITDB_ROOT_USERNAME=${{ secrets.MONGO_INITDB_ROOT_USERNAME }}
+          MONGO_INITDB_ROOT_PASSWORD=${{ secrets.MONGO_INITDB_ROOT_PASSWORD }}
+          MONGO_URI=${{ secrets.MONGO_URI }}
+
+          KAKAO_CLIENT_ID=${{ secrets.KAKAO_CLIENT_ID }}
+          KAKAO_CLIENT_SECRET=${{ secrets.KAKAO_CLIENT_SECRET }}
+          KAKAO_REDIRECT_URI=${{ secrets.KAKAO_REDIRECT_URI }}
+
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          JWT_ACCESS_TOKEN_EXPIRATION=${{ secrets.JWT_ACCESS_TOKEN_EXPIRATION }}
+          JWT_REFRESH_TOKEN_EXPIRATION=${{ secrets.JWT_REFRESH_TOKEN_EXPIRATION }}
+
+          AI_GRADING_EVALUATE_ENDPOINT=${{ secrets.AI_GRADING_EVALUATE_ENDPOINT }}
+          AI_STT_TRANSCRIBE_ENDPOINT=${{ secrets.AI_STT_TRANSCRIBE_ENDPOINT }}
+
+          GRAFANA_ADMIN_USER=${{ secrets.GRAFANA_ADMIN_USER }}
+          GRAFANA_ADMIN_PASSWORD=${{ secrets.GRAFANA_ADMIN_PASSWORD }}
+          EOF
+
+      - name: Copy server files to VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          source: "."
+          target: "${{ secrets.VM_APP_DIR }}/DeadLock-Server"
+          rm: true
+
+      - name: Deploy on VM (docker compose up)
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            cd "${{ secrets.VM_APP_DIR }}/DeadLock-Server"
+            docker compose up -d --build
+            docker compose ps
+
+      - name: Notify Discord (success)
+        if: success()
+        shell: bash
+        run: |
+          curl -fsS -H 'Content-Type: application/json' \
+            -d "{\"content\":\"✅ Deploy success: \`${{ github.repository }}@${{ github.sha }}\` (${GITHUB_REF_NAME})\"}" \
+            "${{ secrets.DISCORD_WEBHOOK_URL }}"
+
+      - name: Notify Discord (failure)
+        if: failure()
+        shell: bash
+        run: |
+          curl -fsS -H 'Content-Type: application/json' \
+            -d "{\"content\":\"❌ Deploy failed: \`${{ github.repository }}@${{ github.sha }}\` (${GITHUB_REF_NAME})\\nActions: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
+            "${{ secrets.DISCORD_WEBHOOK_URL }}"
+
