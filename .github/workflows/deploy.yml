@@ -1,3 +1,6 @@
+heredoc이 YAML 문법과 충돌합니다. `echo` 방식으로 변경:
+
+```yaml
 name: Deploy to GCP VM (Docker Compose)
 
 on:
@@ -21,38 +24,38 @@ jobs:
       - name: Prepare .env for server
         shell: bash
         run: |
-          cat > .env << 'EOF'
-SERVER_PORT=8080
-SPRING_PROFILES_ACTIVE=dev
-POSTGRES_HOST=postgres
-POSTGRES_PORT=5432
-REDIS_HOST=redis
-REDIS_PORT=6379
-MANAGEMENT_PORT=8081
-APP_PORT=${{ secrets.APP_PORT }}
-GRAFANA_PORT=${{ secrets.GRAFANA_PORT }}
-GRAFANA_ROOT_URL=${{ secrets.GRAFANA_ROOT_URL }}
-JAVA_OPTS=${{ secrets.JAVA_OPTS }}
-POSTGRES_DB=${{ secrets.POSTGRES_DB }}
-POSTGRES_USER=${{ secrets.POSTGRES_USER }}
-POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
-REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
-REDIS_TIMEOUT=${{ secrets.REDIS_TIMEOUT }}
-MONGO_DB=${{ secrets.MONGO_DB }}
-MONGO_INITDB_ROOT_USERNAME=${{ secrets.MONGO_INITDB_ROOT_USERNAME }}
-MONGO_INITDB_ROOT_PASSWORD=${{ secrets.MONGO_INITDB_ROOT_PASSWORD }}
-MONGO_URI=${{ secrets.MONGO_URI }}
-KAKAO_CLIENT_ID=${{ secrets.KAKAO_CLIENT_ID }}
-KAKAO_CLIENT_SECRET=${{ secrets.KAKAO_CLIENT_SECRET }}
-KAKAO_REDIRECT_URI=${{ secrets.KAKAO_REDIRECT_URI }}
-JWT_SECRET=${{ secrets.JWT_SECRET }}
-JWT_ACCESS_TOKEN_EXPIRATION=${{ secrets.JWT_ACCESS_TOKEN_EXPIRATION }}
-JWT_REFRESH_TOKEN_EXPIRATION=${{ secrets.JWT_REFRESH_TOKEN_EXPIRATION }}
-AI_GRADING_EVALUATE_ENDPOINT=${{ secrets.AI_GRADING_EVALUATE_ENDPOINT }}
-AI_STT_TRANSCRIBE_ENDPOINT=${{ secrets.AI_STT_TRANSCRIBE_ENDPOINT }}
-GRAFANA_ADMIN_USER=${{ secrets.GRAFANA_ADMIN_USER }}
-GRAFANA_ADMIN_PASSWORD=${{ secrets.GRAFANA_ADMIN_PASSWORD }}
-EOF
+          {
+            echo "SERVER_PORT=8080"
+            echo "SPRING_PROFILES_ACTIVE=dev"
+            echo "POSTGRES_HOST=postgres"
+            echo "POSTGRES_PORT=5432"
+            echo "REDIS_HOST=redis"
+            echo "REDIS_PORT=6379"
+            echo "MANAGEMENT_PORT=8081"
+            echo "APP_PORT=${{ secrets.APP_PORT }}"
+            echo "GRAFANA_PORT=${{ secrets.GRAFANA_PORT }}"
+            echo "GRAFANA_ROOT_URL=${{ secrets.GRAFANA_ROOT_URL }}"
+            echo "JAVA_OPTS=${{ secrets.JAVA_OPTS }}"
+            echo "POSTGRES_DB=${{ secrets.POSTGRES_DB }}"
+            echo "POSTGRES_USER=${{ secrets.POSTGRES_USER }}"
+            echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}"
+            echo "REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}"
+            echo "REDIS_TIMEOUT=${{ secrets.REDIS_TIMEOUT }}"
+            echo "MONGO_DB=${{ secrets.MONGO_DB }}"
+            echo "MONGO_INITDB_ROOT_USERNAME=${{ secrets.MONGO_INITDB_ROOT_USERNAME }}"
+            echo "MONGO_INITDB_ROOT_PASSWORD=${{ secrets.MONGO_INITDB_ROOT_PASSWORD }}"
+            echo "MONGO_URI=${{ secrets.MONGO_URI }}"
+            echo "KAKAO_CLIENT_ID=${{ secrets.KAKAO_CLIENT_ID }}"
+            echo "KAKAO_CLIENT_SECRET=${{ secrets.KAKAO_CLIENT_SECRET }}"
+            echo "KAKAO_REDIRECT_URI=${{ secrets.KAKAO_REDIRECT_URI }}"
+            echo "JWT_SECRET=${{ secrets.JWT_SECRET }}"
+            echo "JWT_ACCESS_TOKEN_EXPIRATION=${{ secrets.JWT_ACCESS_TOKEN_EXPIRATION }}"
+            echo "JWT_REFRESH_TOKEN_EXPIRATION=${{ secrets.JWT_REFRESH_TOKEN_EXPIRATION }}"
+            echo "AI_GRADING_EVALUATE_ENDPOINT=${{ secrets.AI_GRADING_EVALUATE_ENDPOINT }}"
+            echo "AI_STT_TRANSCRIBE_ENDPOINT=${{ secrets.AI_STT_TRANSCRIBE_ENDPOINT }}"
+            echo "GRAFANA_ADMIN_USER=${{ secrets.GRAFANA_ADMIN_USER }}"
+            echo "GRAFANA_ADMIN_PASSWORD=${{ secrets.GRAFANA_ADMIN_PASSWORD }}"
+          } > .env
 
       - name: Deploy (docker compose up)
         shell: bash
@@ -78,3 +81,4 @@ EOF
           curl -fsS -H 'Content-Type: application/json' \
             -d "{\"content\":\"❌ Deploy failed: \`${{ github.repository }}@${{ github.sha }}\` (${GITHUB_REF_NAME})\\nActions: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
             "${{ secrets.DISCORD_WEBHOOK_URL }}"
+```
