@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -54,28 +54,12 @@ jobs:
           GRAFANA_ADMIN_PASSWORD=${{ secrets.GRAFANA_ADMIN_PASSWORD }}
           EOF
 
-      - name: Copy server files to VM
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.VM_HOST }}
-          username: ${{ secrets.VM_USER }}
-          key: ${{ secrets.VM_SSH_KEY }}
-          source: "."
-          target: "${{ secrets.VM_APP_DIR }}/DeadLock-Server"
-          rm: true
-
-      - name: Deploy on VM (docker compose up)
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.VM_HOST }}
-          port: ${{ secrets.VM_PORT }}
-          username: ${{ secrets.VM_USER }}
-          key: ${{ secrets.VM_SSH_KEY }}
-          script: |
-            set -euo pipefail
-            cd "${{ secrets.VM_APP_DIR }}/DeadLock-Server"
-            docker compose up -d --build
-            docker compose ps
+      - name: Deploy (docker compose up)
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker compose up -d --build
+          docker compose ps
 
       - name: Notify Discord (success)
         if: success()
@@ -92,4 +76,4 @@ jobs:
           curl -fsS -H 'Content-Type: application/json' \
             -d "{\"content\":\"❌ Deploy failed: \`${{ github.repository }}@${{ github.sha }}\` (${GITHUB_REF_NAME})\\nActions: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
             "${{ secrets.DISCORD_WEBHOOK_URL }}"
-
+            
