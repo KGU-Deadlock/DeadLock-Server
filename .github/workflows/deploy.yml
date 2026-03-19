@@ -18,19 +18,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Prepare .env for server
+      - name: Prepare .env
         shell: bash
         run: |
           {
-            echo "SERVER_PORT=8080"
-            echo "SPRING_PROFILES_ACTIVE=dev"
-            echo "POSTGRES_HOST=postgres"
-            echo "POSTGRES_PORT=5432"
-            echo "REDIS_HOST=redis"
-            echo "REDIS_PORT=6379"
-            echo "MANAGEMENT_PORT=8081"
-            echo "APP_PORT=${{ secrets.APP_PORT }}"
-            echo "GRAFANA_PORT=${{ secrets.GRAFANA_PORT }}"
             echo "GRAFANA_ROOT_URL=${{ secrets.GRAFANA_ROOT_URL }}"
             echo "JAVA_OPTS=${{ secrets.JAVA_OPTS }}"
             echo "POSTGRES_DB=${{ secrets.POSTGRES_DB }}"
@@ -54,12 +45,16 @@ jobs:
             echo "GRAFANA_ADMIN_PASSWORD=${{ secrets.GRAFANA_ADMIN_PASSWORD }}"
           } > .env
 
-      - name: Deploy (docker compose up)
+      - name: Build image
+        shell: bash
+        run: |
+          docker build -t deadlock-server:latest .
+
+      - name: Deploy
         shell: bash
         run: |
           set -euo pipefail
-          cp .env /workspace/DeadLock-Server/.env
-          docker compose up -d --build
+          docker compose up -d
           docker compose ps
 
       - name: Notify Discord (success)
@@ -67,7 +62,7 @@ jobs:
         shell: bash
         run: |
           curl -fsS -H 'Content-Type: application/json' \
-            -d "{\"content\":\"✅ Deploy success: \`${{ github.repository }}@${{ github.sha }}\` (${GITHUB_REF_NAME})\"}" \
+            -d "{\"content\":\"✅ [Backend] Deploy success: \`${{ github.repository }}@${{ github.sha }}\` (${GITHUB_REF_NAME})\"}" \
             "${{ secrets.DISCORD_WEBHOOK_URL }}"
 
       - name: Notify Discord (failure)
@@ -75,5 +70,5 @@ jobs:
         shell: bash
         run: |
           curl -fsS -H 'Content-Type: application/json' \
-            -d "{\"content\":\"❌ Deploy failed: \`${{ github.repository }}@${{ github.sha }}\` (${GITHUB_REF_NAME})\\nActions: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
+            -d "{\"content\":\"❌ [Backend] Deploy failed: \`${{ github.repository }}@${{ github.sha }}\`\\nActions: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
             "${{ secrets.DISCORD_WEBHOOK_URL }}"

@@ -1,4 +1,20 @@
 services:
+  nginx:
+    image: deadlock-client:latest
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      app:
+        condition: service_healthy
+    networks:
+      - proxy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   postgres:
     image: postgres:17-alpine
     restart: always
@@ -67,43 +83,32 @@ services:
         max-file: "3"
 
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: hellocs:latest
+    image: deadlock-server:latest
     restart: always
     environment:
       SPRING_PROFILES_ACTIVE: docker
       SERVER_PORT: 8080
       MANAGEMENT_PORT: 8081
       TZ: Asia/Seoul
-
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       REDIS_TIMEOUT: ${REDIS_TIMEOUT:-3s}
-
       MONGO_URI: ${MONGO_URI}
-
       AI_GRADING_EVALUATE_ENDPOINT: ${AI_GRADING_EVALUATE_ENDPOINT}
       AI_STT_TRANSCRIBE_ENDPOINT: ${AI_STT_TRANSCRIBE_ENDPOINT}
-
       KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID}
       KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET}
       KAKAO_REDIRECT_URI: ${KAKAO_REDIRECT_URI}
-
       JWT_SECRET: ${JWT_SECRET}
       JWT_ACCESS_TOKEN_EXPIRATION: ${JWT_ACCESS_TOKEN_EXPIRATION}
       JWT_REFRESH_TOKEN_EXPIRATION: ${JWT_REFRESH_TOKEN_EXPIRATION}
-
       JAVA_OPTS: ${JAVA_OPTS}
-
     depends_on:
       postgres:
         condition: service_healthy
@@ -111,40 +116,31 @@ services:
         condition: service_healthy
       mongo:
         condition: service_healthy
-
-    ports:
-      - "${APP_PORT:-8080}:8080"
-
     expose:
+      - "8080"
       - "8081"
-
     networks:
+      - proxy
       - backend
       - observability
-
     read_only: true
     tmpfs:
       - /tmp
-
     cap_drop:
       - ALL
-
     security_opt:
       - no-new-privileges:true
-
     deploy:
       resources:
         limits:
           memory: 1g
         reservations:
           memory: 512m
-
     healthcheck:
       test: ["CMD-SHELL", "curl --fail --silent http://localhost:8081/actuator/health/readiness > /dev/null || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 6
-
     logging:
       driver: "json-file"
       options:
@@ -166,8 +162,13 @@ services:
         condition: service_healthy
     networks:
       - observability
-    ports:
-      - "9090:9090"
+    expose:
+      - "9090"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   grafana:
     image: grafana/grafana:11.2.2
@@ -177,16 +178,23 @@ services:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
       GF_USERS_ALLOW_SIGN_UP: "false"
       GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL}
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
     depends_on:
       prometheus:
         condition: service_started
     volumes:
       - grafana-data:/var/lib/grafana
       - ./ops/grafana/provisioning:/etc/grafana/provisioning:ro
-    ports:
-      - "${GRAFANA_PORT:-3001}:3000"
     networks:
       - observability
+      - proxy
+    expose:
+      - "3000"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   postgres-data:
@@ -196,6 +204,9 @@ volumes:
   grafana-data:
 
 networks:
+  proxy:
+    driver: bridge
+
   backend:
     driver: bridge
     internal: true
