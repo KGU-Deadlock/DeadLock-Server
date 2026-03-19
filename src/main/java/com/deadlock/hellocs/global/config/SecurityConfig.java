@@ -104,6 +104,7 @@ public class SecurityConfig {
                         .requestMatchers("/v1/quiz/**").authenticated()
                         .requestMatchers("/v1/ranking/**").authenticated()
                         .requestMatchers("/v1/streak/**").authenticated()
+                        .requestMatchers("/actuator/**").permitAll()
                         .anyRequest().denyAll()
                 );
     }
