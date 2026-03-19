@@ -2,6 +2,7 @@ package com.deadlock.hellocs.global.config;
 
 import com.deadlock.hellocs.global.apiPayload.code.status.ErrorStatus;
 import com.deadlock.hellocs.global.auth.handler.OAuth2LoginSuccessHandler;
+import com.deadlock.hellocs.global.auth.repository.HttpCookieOAuth2AuthorizationRequestRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -39,6 +40,7 @@ public class SecurityConfig {
     };
 
     private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
+    private final HttpCookieOAuth2AuthorizationRequestRepository cookieAuthorizationRequestRepository;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -70,14 +72,15 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
                 .logout(AbstractHttpConfigurer::disable)
-                .requestCache(RequestCacheConfigurer::disable)
-                .sessionManagement(AbstractHttpConfigurer::disable);
+                .requestCache(RequestCacheConfigurer::disable);
     }
 
     @Bean
     Customizer<HttpSecurity> oauth2Customizer() {
         return http -> http
                 .oauth2Login(oauth2 -> oauth2
+                        .authorizationEndpoint(auth -> auth
+                                .authorizationRequestRepository(cookieAuthorizationRequestRepository))
                         .redirectionEndpoint(redirection -> redirection
                                 .baseUri("/api/v1/auth/token"))
                         .successHandler(oAuth2LoginSuccessHandler)
