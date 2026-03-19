@@ -37,7 +37,7 @@ public class HttpCookieOAuth2AuthorizationRequestRepository
         Cookie cookie = new Cookie(COOKIE_NAME, encoded);
         cookie.setPath("/");
         cookie.setHttpOnly(true);
-        cookie.setSecure(true);
+        cookie.setSecure(false); //개발용. http 에서도 활성화
         cookie.setMaxAge(COOKIE_EXPIRE_SECONDS);
         cookie.setAttribute("SameSite", "None");
         response.addCookie(cookie);
