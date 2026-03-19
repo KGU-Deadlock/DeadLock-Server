@@ -51,7 +51,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
                 .secure(true)
                 .path("/api/v1/auth")
                 .maxAge(Duration.ofMillis(jwtTokenProvider.getRefreshValidity()))
-                .sameSite("None")
+                .sameSite("Lax")
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
