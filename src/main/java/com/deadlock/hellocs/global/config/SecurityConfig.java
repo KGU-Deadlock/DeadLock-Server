@@ -100,6 +100,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/v1/topics").permitAll()
                         .requestMatchers(HttpMethod.GET, "/v1/ranking/summary").permitAll()
                         .requestMatchers("/v1/dev/**").permitAll()
+                        .requestMatchers("/v1/ws/**").permitAll() //개발용으로 permitAll, 나중에는 Auth 받아야함.
                         .requestMatchers("/v1/users/**").authenticated()
                         .requestMatchers("/v1/quiz/**").authenticated()
                         .requestMatchers("/v1/ranking/**").authenticated()
