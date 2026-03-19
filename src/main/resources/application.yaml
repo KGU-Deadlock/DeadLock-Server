@@ -2,6 +2,11 @@ server:
   port: ${SERVER_PORT}
   shutdown: graceful
   forward-headers-strategy: framework
+  servlet:
+    session:
+      cookie:
+        same-site: none
+        secure: true
 
 spring:
   application:

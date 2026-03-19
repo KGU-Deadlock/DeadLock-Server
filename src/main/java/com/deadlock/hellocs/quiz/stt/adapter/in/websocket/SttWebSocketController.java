@@ -14,7 +14,7 @@ import org.springframework.stereotype.Controller;
 @RequiredArgsConstructor
 public class SttWebSocketController {
 
-    private static final String STT_SUBSCRIBE_PREFIX = "/api/v1/ws/sub/stt/";
+    private static final String STT_SUBSCRIBE_PREFIX = "/v1/ws/sub/stt/";
 
     private final CommandSttStreamInputPort commandSttStreamInputPort;
     private final SimpMessagingTemplate messagingTemplate;

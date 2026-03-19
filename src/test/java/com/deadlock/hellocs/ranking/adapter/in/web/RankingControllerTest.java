@@ -1,6 +1,6 @@
 package com.deadlock.hellocs.ranking.adapter.in.web;
 
-import com.deadlock.hellocs.global.config.OAuth2LoginSuccessHandler;
+import com.deadlock.hellocs.global.auth.handler.OAuth2LoginSuccessHandler;
 import com.deadlock.hellocs.global.config.SecurityConfig;
 import com.deadlock.hellocs.quiz.exception.QuizExceptionHandler;
 import com.deadlock.hellocs.ranking.application.port.in.QueryRankingInputPort;
@@ -50,7 +50,7 @@ class RankingControllerTest {
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;
 
     @Test
-    @DisplayName("GET /api/v1/ranking/summary - 공개 요약 랭킹을 조회할 수 있다")
+    @DisplayName("GET /v1/ranking/summary - 공개 요약 랭킹을 조회할 수 있다")
     void getRankingSummary_success() throws Exception {
         RankingSummaryResult result = new RankingSummaryResult(
                 List.of(
@@ -62,7 +62,7 @@ class RankingControllerTest {
 
         given(queryRankingInputPort.getSummary()).willReturn(result);
 
-        mockMvc.perform(get("/api/v1/ranking/summary")
+        mockMvc.perform(get("/v1/ranking/summary")
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.isSuccess").value(true))
@@ -75,7 +75,7 @@ class RankingControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/v1/ranking - 인증된 사용자는 실시간 랭킹 상세를 조회할 수 있다")
+    @DisplayName("GET /v1/ranking - 인증된 사용자는 실시간 랭킹 상세를 조회할 수 있다")
     void getRanking_success() throws Exception {
         RankingDetailResult result = new RankingDetailResult(
                 "ALL",
@@ -93,7 +93,7 @@ class RankingControllerTest {
 
         given(queryRankingInputPort.getRanking(12345L, "ALL", 10)).willReturn(result);
 
-        mockMvc.perform(get("/api/v1/ranking")
+        mockMvc.perform(get("/v1/ranking")
                         .with(SecurityMockMvcRequestPostProcessors.jwt().jwt(jwt -> jwt.subject("12345")))
                         .param("filterType", "ALL")
                         .param("size", "10"))
@@ -109,9 +109,9 @@ class RankingControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/v1/ranking - 인증되지 않은 요청이면 401을 반환한다")
+    @DisplayName("GET /v1/ranking - 인증되지 않은 요청이면 401을 반환한다")
     void getRanking_unauthorized() throws Exception {
-        mockMvc.perform(get("/api/v1/ranking")
+        mockMvc.perform(get("/v1/ranking")
                         .param("filterType", "ALL")
                         .param("size", "10"))
                 .andExpect(status().isUnauthorized())
@@ -123,9 +123,9 @@ class RankingControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/v1/ranking - size가 범위를 벗어나면 400을 반환한다")
+    @DisplayName("GET /v1/ranking - size가 범위를 벗어나면 400을 반환한다")
     void getRanking_invalidSize() throws Exception {
-        mockMvc.perform(get("/api/v1/ranking")
+        mockMvc.perform(get("/v1/ranking")
                         .with(SecurityMockMvcRequestPostProcessors.jwt().jwt(jwt -> jwt.subject("12345")))
                         .param("filterType", "ALL")
                         .param("size", "0"))

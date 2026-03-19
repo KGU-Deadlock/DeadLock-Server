@@ -48,7 +48,7 @@ public class SecurityConfig {
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:5173", "https://hellocs.site"));
+        config.setAllowedOrigins(List.of("http://localhost:5173", "https://localhost:5173", "https://hellocs.site"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
@@ -78,9 +78,9 @@ public class SecurityConfig {
         return http -> http
                 .oauth2Login(oauth2 -> oauth2
                         .authorizationEndpoint(auth -> auth
-                                .baseUri("/api/v1/auth/oauth2"))
+                                .baseUri("/v1/auth/oauth2"))
                         .redirectionEndpoint(redirection -> redirection
-                                .baseUri("/api/v1/auth/token"))
+                                .baseUri("/v1/auth/token"))
                         .successHandler(oAuth2LoginSuccessHandler)
                 );
     }
@@ -96,15 +96,14 @@ public class SecurityConfig {
         return http -> http
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(SWAGGER_WHITELIST).permitAll()
-                        .requestMatchers("/oauth2/**", "/login/oauth2/**", "/api/v1/auth/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/topics").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/ranking/summary").permitAll()
-                        .requestMatchers("/api/v1/dev/**").permitAll()
-                        .requestMatchers("/api/v1/users/**").authenticated()
-                        .requestMatchers("/api/v1/quiz/**").authenticated()
-                        .requestMatchers("/api/v1/ranking/**").authenticated()
-                        .requestMatchers("/api/v1/streak/**").authenticated()
-                        .requestMatchers("/actuator/**").permitAll()
+                        .requestMatchers("/v1/auth/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/v1/topics").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/v1/ranking/summary").permitAll()
+                        .requestMatchers("/v1/dev/**").permitAll()
+                        .requestMatchers("/v1/users/**").authenticated()
+                        .requestMatchers("/v1/quiz/**").authenticated()
+                        .requestMatchers("/v1/ranking/**").authenticated()
+                        .requestMatchers("/v1/streak/**").authenticated()
                         .anyRequest().denyAll()
                 );
     }

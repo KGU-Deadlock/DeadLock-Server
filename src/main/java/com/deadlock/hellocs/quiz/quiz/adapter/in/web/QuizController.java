@@ -15,7 +15,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/v1/quiz")
+@RequestMapping("/v1/quiz")
 @RequiredArgsConstructor
 public class QuizController implements QuizControllerDocs {
     private final QueryQuizInputPort queryQuizInputPort;

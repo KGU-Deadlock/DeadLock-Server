@@ -15,13 +15,13 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
-        registry.enableSimpleBroker("/api/v1/ws/sub");
-        registry.setApplicationDestinationPrefixes("/api/v1/ws/pub");
+        registry.enableSimpleBroker("/v1/ws/sub");
+        registry.setApplicationDestinationPrefixes("/v1/ws/pub");
     }
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        registry.addEndpoint("/api/v1/ws")
+        registry.addEndpoint("/v1/ws")
                 .setAllowedOriginPatterns("*");
     }
 

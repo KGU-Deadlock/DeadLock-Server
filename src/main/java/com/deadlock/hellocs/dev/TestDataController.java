@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/dev")
+@RequestMapping("/v1/dev")
 public class TestDataController {
 
     private final TestDataService testDataService;

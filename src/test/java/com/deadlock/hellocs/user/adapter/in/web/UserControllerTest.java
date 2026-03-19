@@ -1,9 +1,9 @@
 package com.deadlock.hellocs.user.adapter.in.web;
 
-import com.deadlock.hellocs.global.config.OAuth2LoginSuccessHandler;
+import com.deadlock.hellocs.global.auth.handler.OAuth2LoginSuccessHandler;
+import com.deadlock.hellocs.global.auth.jwt.JwtTokenProvider;
 import com.deadlock.hellocs.global.config.SecurityConfig;
 import com.deadlock.hellocs.global.exception.GlobalExceptionHandler;
-import com.deadlock.hellocs.global.jwt.JwtTokenProvider;
 import com.deadlock.hellocs.quiz.shared.domain.QuizLevel;
 import com.deadlock.hellocs.user.application.port.in.CreateUserUseCase;
 import com.deadlock.hellocs.user.application.port.in.LoadUserUseCase;
@@ -65,7 +65,7 @@ class UserControllerTest {
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;
 
     @Test
-    @DisplayName("POST /api/v1/users - 인증된 사용자는 회원가입할 수 있다")
+    @DisplayName("POST /v1/users - 인증된 사용자는 회원가입할 수 있다")
     void createUser_success() throws Exception {
         UserSignUpCommand command = new UserSignUpCommand(
                 "deadlock",
@@ -75,7 +75,7 @@ class UserControllerTest {
                 List.of(1L, 2L)
         );
 
-        mockMvc.perform(post("/api/v1/users")
+        mockMvc.perform(post("/v1/users")
                         .with(SecurityMockMvcRequestPostProcessors.jwt().jwt(jwt -> jwt.subject("12345")))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -96,9 +96,9 @@ class UserControllerTest {
     }
 
     @Test
-    @DisplayName("POST /api/v1/users - 잘못된 회원가입 요청이면 400을 반환한다")
+    @DisplayName("POST /v1/users - 잘못된 회원가입 요청이면 400을 반환한다")
     void createUser_invalidRequest() throws Exception {
-        mockMvc.perform(post("/api/v1/users")
+        mockMvc.perform(post("/v1/users")
                         .with(SecurityMockMvcRequestPostProcessors.jwt().jwt(jwt -> jwt.subject("12345")))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -118,7 +118,7 @@ class UserControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/v1/users/me - 내 프로필을 조회할 수 있다")
+    @DisplayName("GET /v1/users/me - 내 프로필을 조회할 수 있다")
     void getMyProfile_success() throws Exception {
         given(loadUserUseCase.getProfile(12345L))
                 .willReturn(new ProfileResult(
@@ -127,7 +127,7 @@ class UserControllerTest {
                         List.of("OS", "DB")
                 ));
 
-        mockMvc.perform(get("/api/v1/users/me")
+        mockMvc.perform(get("/v1/users/me")
                         .with(SecurityMockMvcRequestPostProcessors.jwt().jwt(jwt -> jwt.subject("12345"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.isSuccess").value(true))
@@ -139,7 +139,7 @@ class UserControllerTest {
     }
 
     @Test
-    @DisplayName("PATCH /api/v1/users/me - 내 프로필을 수정할 수 있다")
+    @DisplayName("PATCH /v1/users/me - 내 프로필을 수정할 수 있다")
     void updateMyProfile_success() throws Exception {
         UpdateMyInfoCommand command = new UpdateMyInfoCommand(
                 "updated",
@@ -147,7 +147,7 @@ class UserControllerTest {
                 List.of(3L, 4L)
         );
 
-        mockMvc.perform(patch("/api/v1/users/me")
+        mockMvc.perform(patch("/v1/users/me")
                         .with(SecurityMockMvcRequestPostProcessors.jwt().jwt(jwt -> jwt.subject("12345")))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -166,9 +166,9 @@ class UserControllerTest {
     }
 
     @Test
-    @DisplayName("PATCH /api/v1/users/me - 잘못된 수정 요청이면 400을 반환한다")
+    @DisplayName("PATCH /v1/users/me - 잘못된 수정 요청이면 400을 반환한다")
     void updateMyProfile_invalidRequest() throws Exception {
-        mockMvc.perform(patch("/api/v1/users/me")
+        mockMvc.perform(patch("/v1/users/me")
                         .with(SecurityMockMvcRequestPostProcessors.jwt().jwt(jwt -> jwt.subject("12345")))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -186,9 +186,9 @@ class UserControllerTest {
     }
 
     @Test
-    @DisplayName("DELETE /api/v1/users/me - 내 계정을 삭제할 수 있다")
+    @DisplayName("DELETE /v1/users/me - 내 계정을 삭제할 수 있다")
     void deleteMyAccount_success() throws Exception {
-        mockMvc.perform(delete("/api/v1/users/me")
+        mockMvc.perform(delete("/v1/users/me")
                         .with(SecurityMockMvcRequestPostProcessors.jwt().jwt(jwt -> jwt.subject("12345"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.isSuccess").value(true))
@@ -199,30 +199,9 @@ class UserControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/v1/users/admin - 인증된 요청이면 관리자 계정 토큰을 발급할 수 있다")
-    void getAdminAccount_success() throws Exception {
-        given(jwtTokenProvider.createAccessToken(org.mockito.ArgumentMatchers.any()))
-                .willReturn("access-token");
-        given(jwtTokenProvider.createRefreshToken(org.mockito.ArgumentMatchers.any()))
-                .willReturn("refresh-token");
-        given(loadUserUseCase.isExist(1L)).willReturn(true);
-
-        mockMvc.perform(get("/api/v1/users/admin")
-                        .with(SecurityMockMvcRequestPostProcessors.jwt().jwt(jwt -> jwt.subject("12345"))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.isSuccess").value(true))
-                .andExpect(jsonPath("$.code").value("COMMON2000"))
-                .andExpect(jsonPath("$.data.accessToken").value("access-token"))
-                .andExpect(jsonPath("$.data.refreshToken").value("refresh-token"))
-                .andExpect(jsonPath("$.data.isUser").value(true));
-
-        then(loadUserUseCase).should().isExist(1L);
-    }
-
-    @Test
-    @DisplayName("GET /api/v1/users/me - 인증되지 않은 요청이면 401을 반환한다")
+    @DisplayName("GET /v1/users/me - 인증되지 않은 요청이면 401을 반환한다")
     void getMyProfile_unauthorized() throws Exception {
-        mockMvc.perform(get("/api/v1/users/me"))
+        mockMvc.perform(get("/v1/users/me"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.isSuccess").value(false))
                 .andExpect(jsonPath("$.code").value("COMMON401"))

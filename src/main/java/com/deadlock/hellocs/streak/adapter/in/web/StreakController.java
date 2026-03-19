@@ -29,7 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Validated
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/streak")
+@RequestMapping("/v1/streak")
 public class StreakController {
 
     private final QueryStreakInputPort queryStreakInputPort;

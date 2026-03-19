@@ -1,6 +1,6 @@
 package com.deadlock.hellocs.streak.adapter.in.web;
 
-import com.deadlock.hellocs.global.config.OAuth2LoginSuccessHandler;
+import com.deadlock.hellocs.global.auth.handler.OAuth2LoginSuccessHandler;
 import com.deadlock.hellocs.global.config.SecurityConfig;
 import com.deadlock.hellocs.quiz.exception.QuizExceptionHandler;
 import com.deadlock.hellocs.streak.application.port.in.QueryStreakInputPort;
@@ -50,12 +50,12 @@ class StreakControllerTest {
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;
 
     @Test
-    @DisplayName("GET /api/v1/streak - 인증된 사용자는 스트릭 요약을 조회할 수 있다")
+    @DisplayName("GET /v1/streak - 인증된 사용자는 스트릭 요약을 조회할 수 있다")
     void getSummary_success() throws Exception {
         given(queryStreakInputPort.getSummary(12345L))
                 .willReturn(new StreakSummaryResult(4, 87, 5));
 
-        mockMvc.perform(get("/api/v1/streak")
+        mockMvc.perform(get("/v1/streak")
                         .with(SecurityMockMvcRequestPostProcessors.jwt().jwt(jwt -> jwt.subject("12345"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.isSuccess").value(true))
@@ -68,7 +68,7 @@ class StreakControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/v1/streak?year&month - 월간 스트릭 기록을 조회할 수 있다")
+    @DisplayName("GET /v1/streak?year&month - 월간 스트릭 기록을 조회할 수 있다")
     void getMonthly_success() throws Exception {
         given(queryStreakInputPort.getMonthly(12345L, 2025, 12))
                 .willReturn(new StreakMonthlyResult(
@@ -80,7 +80,7 @@ class StreakControllerTest {
                         )
                 ));
 
-        mockMvc.perform(get("/api/v1/streak")
+        mockMvc.perform(get("/v1/streak")
                         .with(SecurityMockMvcRequestPostProcessors.jwt().jwt(jwt -> jwt.subject("12345")))
                         .param("year", "2025")
                         .param("month", "12"))
@@ -96,7 +96,7 @@ class StreakControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/v1/streak/detail - 스트릭 상세를 조회할 수 있다")
+    @DisplayName("GET /v1/streak/detail - 스트릭 상세를 조회할 수 있다")
     void getDetail_success() throws Exception {
         given(queryStreakInputPort.getDetail(12345L))
                 .willReturn(new StreakDetailResult(
@@ -110,7 +110,7 @@ class StreakControllerTest {
                         23
                 ));
 
-        mockMvc.perform(get("/api/v1/streak/detail")
+        mockMvc.perform(get("/v1/streak/detail")
                         .with(SecurityMockMvcRequestPostProcessors.jwt().jwt(jwt -> jwt.subject("12345"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.isSuccess").value(true))
@@ -123,9 +123,9 @@ class StreakControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/v1/streak - 인증되지 않은 요청이면 401을 반환한다")
+    @DisplayName("GET /v1/streak - 인증되지 않은 요청이면 401을 반환한다")
     void getSummary_unauthorized() throws Exception {
-        mockMvc.perform(get("/api/v1/streak"))
+        mockMvc.perform(get("/v1/streak"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.isSuccess").value(false))
                 .andExpect(jsonPath("$.code").value("COMMON401"))
@@ -135,9 +135,9 @@ class StreakControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/v1/streak?year&month - month가 범위를 벗어나면 400을 반환한다")
+    @DisplayName("GET /v1/streak?year&month - month가 범위를 벗어나면 400을 반환한다")
     void getMonthly_invalidMonth() throws Exception {
-        mockMvc.perform(get("/api/v1/streak")
+        mockMvc.perform(get("/v1/streak")
                         .with(SecurityMockMvcRequestPostProcessors.jwt().jwt(jwt -> jwt.subject("12345")))
                         .param("year", "2025")
                         .param("month", "13"))

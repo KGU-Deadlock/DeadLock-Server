@@ -60,7 +60,7 @@ class QuizControllerTest {
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;
 
     @Test
-    @DisplayName("POST /api/v1/quiz - 인증된 사용자는 퀴즈 목록을 조회할 수 있다")
+    @DisplayName("POST /v1/quiz - 인증된 사용자는 퀴즈 목록을 조회할 수 있다")
     void getQuizzes_success() throws Exception {
         GetQuizResult result = new GetQuizResult(
                 List.of(new OxQuizResult(1L, "OX question")),
@@ -73,7 +73,7 @@ class QuizControllerTest {
         given(queryQuizInputPort.getQuizzes(eq(new GetQuizCommand(QuizLevel.PRO, List.of(10L, 20L), QuizMode.STANDARD))))
                 .willReturn(result);
 
-        mockMvc.perform(post("/api/v1/quiz")
+        mockMvc.perform(post("/v1/quiz")
                         .with(SecurityMockMvcRequestPostProcessors.jwt().jwt(jwt -> jwt.subject("12345")))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -96,9 +96,9 @@ class QuizControllerTest {
     }
 
     @Test
-    @DisplayName("POST /api/v1/quiz - 잘못된 요청 본문이면 400을 반환한다")
+    @DisplayName("POST /v1/quiz - 잘못된 요청 본문이면 400을 반환한다")
     void getQuizzes_invalidRequest() throws Exception {
-        mockMvc.perform(post("/api/v1/quiz")
+        mockMvc.perform(post("/v1/quiz")
                         .with(SecurityMockMvcRequestPostProcessors.jwt().jwt(jwt -> jwt.subject("12345")))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -117,9 +117,9 @@ class QuizControllerTest {
     }
 
     @Test
-    @DisplayName("POST /api/v1/quiz - 인증되지 않은 요청이면 401을 반환한다")
+    @DisplayName("POST /v1/quiz - 인증되지 않은 요청이면 401을 반환한다")
     void getQuizzes_unauthorized() throws Exception {
-        mockMvc.perform(post("/api/v1/quiz")
+        mockMvc.perform(post("/v1/quiz")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {

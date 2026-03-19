@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/quiz/grading")
+@RequestMapping("/v1/quiz/grading")
 @RequiredArgsConstructor
 public class QuizGradingController implements QuizGradingControllerDocs {
     private final CommandAnswerInputPort commandAnswerInputPort;

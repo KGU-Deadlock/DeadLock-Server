@@ -14,7 +14,7 @@ import java.io.IOException;
 import java.time.Duration;
 
 @RestController
-@RequestMapping("/api/v1/auth")
+@RequestMapping("/v1/auth")
 @RequiredArgsConstructor
 public class AuthController implements AuthControllerDocs {
 

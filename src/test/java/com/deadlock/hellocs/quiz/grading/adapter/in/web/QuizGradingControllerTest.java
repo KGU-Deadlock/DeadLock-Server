@@ -60,7 +60,7 @@ class QuizGradingControllerTest {
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;
 
     @Test
-    @DisplayName("POST /api/v1/quiz/grading - 인증된 사용자는 답안을 제출할 수 있다")
+    @DisplayName("POST /v1/quiz/grading - 인증된 사용자는 답안을 제출할 수 있다")
     void submitAnswers_success() throws Exception {
         List<UserGradingCommand> answers = List.of(
                 new UserGradingCommand(101L, "true"),
@@ -70,7 +70,7 @@ class QuizGradingControllerTest {
         given(commandAnswerInputPort.submit(eq(new SubmitAnswersCommand(12345L, answers))))
                 .willReturn("log-12345");
 
-        mockMvc.perform(post("/api/v1/quiz/grading")
+        mockMvc.perform(post("/v1/quiz/grading")
                         .with(SecurityMockMvcRequestPostProcessors.jwt().jwt(jwt -> jwt.subject("12345")))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -89,9 +89,9 @@ class QuizGradingControllerTest {
     }
 
     @Test
-    @DisplayName("POST /api/v1/quiz/grading - 잘못된 답안 요청이면 400을 반환한다")
+    @DisplayName("POST /v1/quiz/grading - 잘못된 답안 요청이면 400을 반환한다")
     void submitAnswers_invalidRequest() throws Exception {
-        mockMvc.perform(post("/api/v1/quiz/grading")
+        mockMvc.perform(post("/v1/quiz/grading")
                         .with(SecurityMockMvcRequestPostProcessors.jwt().jwt(jwt -> jwt.subject("12345")))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -108,9 +108,9 @@ class QuizGradingControllerTest {
     }
 
     @Test
-    @DisplayName("POST /api/v1/quiz/grading - 인증되지 않은 요청이면 401을 반환한다")
+    @DisplayName("POST /v1/quiz/grading - 인증되지 않은 요청이면 401을 반환한다")
     void submitAnswers_unauthorized() throws Exception {
-        mockMvc.perform(post("/api/v1/quiz/grading")
+        mockMvc.perform(post("/v1/quiz/grading")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 [
@@ -126,7 +126,7 @@ class QuizGradingControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/v1/quiz/grading/{gradingLogId} - 채점 로그를 조회할 수 있다")
+    @DisplayName("GET /v1/quiz/grading/{gradingLogId} - 채점 로그를 조회할 수 있다")
     void getGradingLog_success() throws Exception {
         GradingLogResult result = GradingLogResult.builder()
                 .correctCount(1)
@@ -144,7 +144,7 @@ class QuizGradingControllerTest {
         given(queryGradingLogInputPort.getGradingLog(new GetGradingLogCommand("log-12345")))
                 .willReturn(result);
 
-        mockMvc.perform(get("/api/v1/quiz/grading/{gradingLogId}", "log-12345")
+        mockMvc.perform(get("/v1/quiz/grading/{gradingLogId}", "log-12345")
                         .with(SecurityMockMvcRequestPostProcessors.jwt().jwt(jwt -> jwt.subject("12345"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.isSuccess").value(true))
@@ -159,7 +159,7 @@ class QuizGradingControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/v1/quiz/grading/{gradingLogId}/{quizId} - 채점 상세를 조회할 수 있다")
+    @DisplayName("GET /v1/quiz/grading/{gradingLogId}/{quizId} - 채점 상세를 조회할 수 있다")
     void getGradingDetailLog_success() throws Exception {
         GradingDetailLogResult result = GradingDetailLogResult.builder()
                 .quizId(101L)
@@ -177,7 +177,7 @@ class QuizGradingControllerTest {
         given(queryGradingLogInputPort.getGradingDetailLog(new GetGradingDetailLogCommand("log-12345", 101L)))
                 .willReturn(result);
 
-        mockMvc.perform(get("/api/v1/quiz/grading/{gradingLogId}/{quizId}", "log-12345", 101L)
+        mockMvc.perform(get("/v1/quiz/grading/{gradingLogId}/{quizId}", "log-12345", 101L)
                         .with(SecurityMockMvcRequestPostProcessors.jwt().jwt(jwt -> jwt.subject("12345"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.isSuccess").value(true))
