@@ -4,6 +4,8 @@ import com.deadlock.hellocs.global.apiPayload.ApiResponse;
 import com.deadlock.hellocs.global.auth.jwt.JwtTokenProvider;
 import com.deadlock.hellocs.user.application.port.in.LoadUserUseCase;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -21,6 +23,12 @@ public class TestDataController {
     @PostMapping("/seed")
     public ApiResponse<SeedResult> seed() {
         return ApiResponse.onSuccess(testDataService.seed());
+    }
+
+    @PostMapping("/seed/me")
+    public ApiResponse<MyTestDataSeedResult> seedMyData(@AuthenticationPrincipal Jwt jwt) {
+        Long kakaoId = Long.valueOf(jwt.getSubject());
+        return ApiResponse.onSuccess(testDataService.seedMyData(kakaoId));
     }
 
     @GetMapping("/admin-token")

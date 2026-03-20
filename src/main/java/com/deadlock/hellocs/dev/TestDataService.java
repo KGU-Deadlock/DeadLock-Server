@@ -1,5 +1,7 @@
 package com.deadlock.hellocs.dev;
 
+import com.deadlock.hellocs.global.apiPayload.code.status.ErrorStatus;
+import com.deadlock.hellocs.global.exception.CustomException;
 import com.deadlock.hellocs.quiz.quiz.adapter.out.persistence.QuizRepository;
 import com.deadlock.hellocs.quiz.quiz.adapter.out.persistence.entity.QuizJpaEntity;
 import com.deadlock.hellocs.quiz.quiz.adapter.out.persistence.entity.QuizMultipleChoiceJpaEntity;
@@ -7,6 +9,7 @@ import com.deadlock.hellocs.quiz.quiz.adapter.out.persistence.entity.QuizOxJpaEn
 import com.deadlock.hellocs.quiz.quiz.adapter.out.persistence.entity.QuizShortAnswerJpaEntity;
 import com.deadlock.hellocs.quiz.quiz.adapter.out.persistence.entity.QuizVoiceJpaEntity;
 import com.deadlock.hellocs.quiz.shared.domain.QuizLevel;
+import com.deadlock.hellocs.quiz.shared.domain.QuizType;
 import com.deadlock.hellocs.streak.adapter.out.persistence.UserStreakRepository;
 import com.deadlock.hellocs.streak.adapter.out.persistence.entity.DailyStreakRecordMongoValue;
 import com.deadlock.hellocs.streak.adapter.out.persistence.entity.UserStreakMongoEntity;
@@ -22,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -33,8 +37,10 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class TestDataService {
 
+    private static final String DEV_SEED_PREFIX = "[DEV-SEED]";
     private static final String GLOBAL_RANKING_KEY = "ranking:global";
     private static final String TOPIC_RANKING_KEY_PREFIX = "ranking:topic:";
+    private static final int QUIZZES_PER_TYPE_AND_LEVEL = 5;
 
     private final TopicRepository topicRepository;
     private final UserRepository userRepository;
@@ -67,6 +73,41 @@ public class TestDataService {
                 quizzesCreated,
                 rankingEntriesCreated,
                 streaksCreated
+        );
+    }
+
+    @Transactional
+    public MyTestDataSeedResult seedMyData(Long kakaoId) {
+        UserJpaEntity user = userRepository.findTopByKakaoIdOrderByIdDesc(kakaoId)
+                .orElseThrow(() -> new CustomException(ErrorStatus._USER_NOT_FOUND));
+
+        List<TopicJpaEntity> allTopics = topicRepository.findAll().stream()
+                .sorted(Comparator.comparing(TopicJpaEntity::getId))
+                .toList();
+
+        List<Long> allTopicIds = allTopics.stream()
+                .map(TopicJpaEntity::getId)
+                .toList();
+        List<String> allTopicNames = allTopics.stream()
+                .map(TopicJpaEntity::getName)
+                .toList();
+
+        List<Long> rankingTopicIds = allTopicIds.isEmpty()
+                ? user.toDomain().getInterestTopicIds()
+                : allTopicIds;
+
+        int quizzesCreated = seedQuizzes(allTopicNames, allTopicIds);
+        int globalRankingEntriesUpserted = seedMyRanking(user, rankingTopicIds);
+        int streakDaysCreated = seedMyStreak(user, rankingTopicIds);
+
+        return new MyTestDataSeedResult(
+                user.getKakaoId(),
+                user.getNickname(),
+                rankingTopicIds.size(),
+                quizzesCreated,
+                globalRankingEntriesUpserted,
+                rankingTopicIds.size(),
+                streakDaysCreated
         );
     }
 
@@ -137,54 +178,111 @@ public class TestDataService {
     }
 
     private int seedQuizzes(List<String> topicNames, List<Long> topicIds) {
-        if (quizRepository.count() > 0) {
-            return 0;
-        }
-
         List<QuizJpaEntity> quizzes = new ArrayList<>();
         for (int i = 0; i < topicNames.size(); i++) {
             String topicName = topicNames.get(i);
             Long topicId = topicIds.get(i);
-            QuizLevel level = resolveLevel(i);
+            quizzes.addAll(buildMissingQuizzesForTopic(topicName, topicId));
+        }
 
-            quizzes.add(QuizOxJpaEntity.builder()
-                    .level(level)
-                    .topicIds(List.of(topicId))
-                    .content("[" + topicName + "] OX: " + topicName + " is a core CS topic.")
-                    .answer(true)
-                    .explain("Foundational concepts in " + topicName + " appear in many CS interviews.")
-                    .build());
-
-            quizzes.add(QuizMultipleChoiceJpaEntity.builder()
-                    .level(level)
-                    .topicIds(List.of(topicId))
-                    .content("[" + topicName + "] Which concept is most closely related?")
-                    .answer(2)
-                    .choice(topicName + " option 1||" + topicName + " option 2||" + topicName + " option 3||" + topicName + " option 4")
-                    .explain("Answer 2 is typically associated with " + topicName + ".")
-                    .build());
-
-            quizzes.add(QuizShortAnswerJpaEntity.builder()
-                    .level(level)
-                    .topicIds(List.of(topicId))
-                    .content("[" + topicName + "] Provide a short definition.")
-                    .answer(topicName + " basics")
-                    .explain("Use one sentence with a key idea.")
-                    .build());
-
-            String voiceKey = topicName.toLowerCase(Locale.ROOT).replace(" ", "-");
-            quizzes.add(QuizVoiceJpaEntity.builder()
-                    .level(level)
-                    .topicIds(List.of(topicId))
-                    .content("voice://" + voiceKey + "-question-01")
-                    .contentText("[" + topicName + "] Explain this topic in one sentence.")
-                    .answer("Short explanation of " + topicName)
-                    .explain("Keep it concise and accurate.")
-                    .build());
+        if (quizzes.isEmpty()) {
+            return 0;
         }
 
         quizRepository.saveAll(quizzes);
         return quizzes.size();
+    }
+
+    private List<QuizJpaEntity> buildMissingQuizzesForTopic(String topicName, Long topicId) {
+        List<QuizJpaEntity> quizzes = new ArrayList<>();
+
+        for (QuizLevel level : QuizLevel.values()) {
+            for (QuizType type : QuizType.values()) {
+                int existingCount = (int) quizRepository.countDevSeedByLevelAndTypeAndTopicId(
+                        level,
+                        type,
+                        topicId,
+                        DEV_SEED_PREFIX
+                );
+                int missingCount = Math.max(0, QUIZZES_PER_TYPE_AND_LEVEL - existingCount);
+
+                for (int variant = 1; variant <= missingCount; variant++) {
+                    quizzes.add(buildQuiz(topicName, topicId, level, type, existingCount + variant));
+                }
+            }
+        }
+
+        return quizzes;
+    }
+
+    private QuizJpaEntity buildQuiz(String topicName, Long topicId, QuizLevel level, QuizType type, int sequence) {
+        return switch (type) {
+            case OX -> buildOxQuiz(topicName, topicId, level, sequence);
+            case MULTIPLE_CHOICE -> buildMultipleChoiceQuiz(topicName, topicId, level, sequence);
+            case SHORT_ANSWER -> buildShortAnswerQuiz(topicName, topicId, level, sequence);
+            case VOICE -> buildVoiceQuiz(topicName, topicId, level, sequence);
+        };
+    }
+
+    private QuizOxJpaEntity buildOxQuiz(String topicName, Long topicId, QuizLevel level, int sequence) {
+        boolean answer = sequence % 2 == 1;
+        String levelLabel = level.name();
+        return QuizOxJpaEntity.builder()
+                .level(level)
+                .topicIds(List.of(topicId))
+                .content("[DEV-SEED][" + topicName + "][" + levelLabel + "][OX][" + sequence + "] "
+                        + topicName + " statement " + sequence + " is "
+                        + (answer ? "correct" : "incorrect") + ".")
+                .answer(answer)
+                .explain(topicName + " " + levelLabel + " OX explanation " + sequence + ".")
+                .build();
+    }
+
+    private QuizMultipleChoiceJpaEntity buildMultipleChoiceQuiz(String topicName, Long topicId, QuizLevel level, int sequence) {
+        int answer = (sequence % 4) + 1;
+        String levelLabel = level.name();
+        return QuizMultipleChoiceJpaEntity.builder()
+                .level(level)
+                .topicIds(List.of(topicId))
+                .content("[DEV-SEED][" + topicName + "][" + levelLabel + "][MULTIPLE_CHOICE][" + sequence + "] "
+                        + topicName + " multiple choice question " + sequence + ".")
+                .answer(answer)
+                .choice(buildChoices(topicName, levelLabel, sequence))
+                .explain(topicName + " " + levelLabel + " multiple choice explanation " + sequence + ".")
+                .build();
+    }
+
+    private QuizShortAnswerJpaEntity buildShortAnswerQuiz(String topicName, Long topicId, QuizLevel level, int sequence) {
+        String levelLabel = level.name();
+        return QuizShortAnswerJpaEntity.builder()
+                .level(level)
+                .topicIds(List.of(topicId))
+                .content("[DEV-SEED][" + topicName + "][" + levelLabel + "][SHORT_ANSWER][" + sequence + "] "
+                        + topicName + " short answer question " + sequence + ".")
+                .answer(topicName + " " + levelLabel + " keyword " + sequence)
+                .explain(topicName + " " + levelLabel + " short answer explanation " + sequence + ".")
+                .build();
+    }
+
+    private QuizVoiceJpaEntity buildVoiceQuiz(String topicName, Long topicId, QuizLevel level, int sequence) {
+        String voiceKey = topicName.toLowerCase(Locale.ROOT).replace(" ", "-");
+        String levelLabel = level.name().toLowerCase(Locale.ROOT);
+        return QuizVoiceJpaEntity.builder()
+                .level(level)
+                .topicIds(List.of(topicId))
+                .content("voice://dev-seed/" + voiceKey + "/" + levelLabel + "/question-" + sequence)
+                .contentText("[DEV-SEED][" + topicName + "][" + level.name() + "][VOICE][" + sequence + "] "
+                        + topicName + " voice question " + sequence + ".")
+                .answer(topicName + " " + level.name() + " voice answer " + sequence)
+                .explain(topicName + " " + level.name() + " voice explanation " + sequence + ".")
+                .build();
+    }
+
+    private String buildChoices(String topicName, String levelLabel, int sequence) {
+        return topicName + " " + levelLabel + " choice " + sequence + "-1"
+                + "||" + topicName + " " + levelLabel + " choice " + sequence + "-2"
+                + "||" + topicName + " " + levelLabel + " choice " + sequence + "-3"
+                + "||" + topicName + " " + levelLabel + " choice " + sequence + "-4";
     }
 
     private int seedRanking(List<SeedUserResolved> users) {
@@ -267,12 +365,138 @@ public class TestDataService {
         return created;
     }
 
-    private QuizLevel resolveLevel(int index) {
-        return switch (index % 3) {
-            case 0 -> QuizLevel.JUNIOR;
-            case 1 -> QuizLevel.SEMIPRO;
-            default -> QuizLevel.PRO;
-        };
+    private int seedMyRanking(UserJpaEntity user, List<Long> topicIds) {
+        long globalScore = 540L;
+        stringRedisTemplate.opsForZSet()
+                .add(GLOBAL_RANKING_KEY, String.valueOf(user.getKakaoId()), globalScore);
+
+        for (int i = 0; i < topicIds.size(); i++) {
+            Long topicId = topicIds.get(i);
+            long topicScore = Math.max(80L, globalScore - (long) i * 17L);
+            String key = TOPIC_RANKING_KEY_PREFIX + topicId;
+            stringRedisTemplate.opsForZSet()
+                    .add(key, String.valueOf(user.getKakaoId()), topicScore);
+        }
+
+        return 1;
+    }
+
+    private int seedMyStreak(UserJpaEntity user, List<Long> topicIds) {
+        LocalDate today = LocalDate.now();
+        Map<String, DailyStreakRecordMongoValue> records = new HashMap<>();
+        int totalSolved = 0;
+
+        for (int day = 27; day >= 0; day--) {
+            LocalDate date = today.minusDays(day);
+            boolean solved = day != 6 && day != 13 && day != 20;
+            int quizCount = solved ? 2 + ((27 - day) % 4) : 0;
+            totalSolved += quizCount;
+
+            List<Long> solvedTopicIds = solved ? resolveSolvedTopicIds(topicIds, day) : List.of();
+            List<String> solvedQuizIds = solved
+                    ? buildSolvedQuizIds(user.getKakaoId(), date, quizCount)
+                    : List.of();
+
+            records.put(date.toString(), new DailyStreakRecordMongoValue(
+                    solved,
+                    quizCount,
+                    0,
+                    solvedTopicIds,
+                    solvedQuizIds
+            ));
+        }
+
+        int currentStreak = calculateTrailingStreak(records, today);
+        int longestStreak = calculateLongestStreak(records);
+        Map<String, DailyStreakRecordMongoValue> normalizedRecords = applyStreakSnapshots(records);
+        int finalTotalSolved = totalSolved;
+
+        UserStreakMongoEntity streak = userStreakRepository.findByUserId(user.getKakaoId())
+                .map(existing -> UserStreakMongoEntity.builder()
+                        .id(existing.getId())
+                        .version(existing.getVersion())
+                        .userId(user.getKakaoId())
+                        .currentStreak(currentStreak)
+                        .longestStreak(longestStreak)
+                        .totalSolved(finalTotalSolved)
+                        .dailyRecords(normalizedRecords)
+                        .lastSolvedDate(today)
+                        .build())
+                .orElseGet(() -> UserStreakMongoEntity.builder()
+                        .userId(user.getKakaoId())
+                        .currentStreak(currentStreak)
+                        .longestStreak(longestStreak)
+                        .totalSolved(finalTotalSolved)
+                        .dailyRecords(normalizedRecords)
+                        .lastSolvedDate(today)
+                        .build());
+
+        userStreakRepository.save(streak);
+        return normalizedRecords.size();
+    }
+
+    private List<Long> resolveSolvedTopicIds(List<Long> topicIds, int day) {
+        if (topicIds.isEmpty()) {
+            return List.of();
+        }
+
+        int firstIndex = Math.floorMod(day, topicIds.size());
+        int secondIndex = Math.floorMod(day + 1, topicIds.size());
+        if (firstIndex == secondIndex) {
+            return List.of(topicIds.get(firstIndex));
+        }
+        return List.of(topicIds.get(firstIndex), topicIds.get(secondIndex));
+    }
+
+    private List<String> buildSolvedQuizIds(Long kakaoId, LocalDate date, int quizCount) {
+        List<String> solvedQuizIds = new ArrayList<>();
+        for (int i = 0; i < quizCount; i++) {
+            solvedQuizIds.add("my-seed-" + kakaoId + "-" + date + "-" + (i + 1));
+        }
+        return solvedQuizIds;
+    }
+
+    private int calculateTrailingStreak(Map<String, DailyStreakRecordMongoValue> records, LocalDate today) {
+        int streak = 0;
+        for (int offset = 0; offset < records.size(); offset++) {
+            DailyStreakRecordMongoValue record = records.get(today.minusDays(offset).toString());
+            if (record == null || !record.isSolved()) {
+                break;
+            }
+            streak++;
+        }
+        return streak;
+    }
+
+    private int calculateLongestStreak(Map<String, DailyStreakRecordMongoValue> records) {
+        return applyStreakSnapshots(records).values().stream()
+                .mapToInt(DailyStreakRecordMongoValue::getStreakAtEndOfDay)
+                .max()
+                .orElse(0);
+    }
+
+    private Map<String, DailyStreakRecordMongoValue> applyStreakSnapshots(Map<String, DailyStreakRecordMongoValue> records) {
+        Map<String, DailyStreakRecordMongoValue> normalized = new HashMap<>();
+        int currentStreak = 0;
+
+        List<LocalDate> dates = records.keySet().stream()
+                .map(LocalDate::parse)
+                .sorted()
+                .toList();
+
+        for (LocalDate date : dates) {
+            DailyStreakRecordMongoValue record = records.get(date.toString());
+            currentStreak = record.isSolved() ? currentStreak + 1 : 0;
+            normalized.put(date.toString(), new DailyStreakRecordMongoValue(
+                    record.isSolved(),
+                    record.getQuizCount(),
+                    currentStreak,
+                    record.getTopicIds(),
+                    record.getAppliedGradingLogIds()
+            ));
+        }
+
+        return normalized;
     }
 
     private record SeedUser(Long kakaoId, String nickname, QuizLevel quizLevel, List<Integer> interestIndexes) {
