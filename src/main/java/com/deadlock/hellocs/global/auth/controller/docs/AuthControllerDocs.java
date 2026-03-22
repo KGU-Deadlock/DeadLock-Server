@@ -34,7 +34,7 @@ public interface AuthControllerDocs {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "200",
                     description = "로그인 성공",
-                    content = @Content(schema = @Schema(implementation = AuthController.OAuth2TokenResponse.class))
+                    content = @Content(schema = @Schema(implementation = AuthController.AuthTokenResponse.class))
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "401",
@@ -63,6 +63,6 @@ public interface AuthControllerDocs {
                     content = @Content
             )
     })
-    ApiResponse<AuthController.ReissueResponse> reissue(String refreshToken,
+    ApiResponse<AuthController.AuthTokenResponse> reissue(String refreshToken,
                                                          HttpServletResponse response);
 }

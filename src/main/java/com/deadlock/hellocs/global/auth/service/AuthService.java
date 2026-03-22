@@ -19,11 +19,15 @@ public class AuthService {
     public TokenPair reissueTokens(String refreshToken) {
         Jwt decodedJwt = validateRefreshToken(refreshToken);
         String kakaoIdStr = decodedJwt.getSubject();
-        String role = getUserRole(Long.valueOf(kakaoIdStr));
+        Long kakaoId = Long.valueOf(kakaoIdStr);
+
+        boolean isUser = loadUserUseCase.isExist(kakaoId);
+        String role = isUser ? loadUserUseCase.getUserRole(kakaoId).name() : null;
 
         return new TokenPair(
                 jwtTokenProvider.createAccessToken(kakaoIdStr, role),
-                jwtTokenProvider.createRefreshToken(kakaoIdStr)
+                jwtTokenProvider.createRefreshToken(kakaoIdStr),
+                isUser
         );
     }
 
@@ -46,12 +50,5 @@ public class AuthService {
         }
     }
 
-    private String getUserRole(Long kakaoId) {
-        if (!loadUserUseCase.isExist(kakaoId)) {
-            throw new CustomException(ErrorStatus._USER_NOT_FOUND);
-        }
-        return loadUserUseCase.getUserRole(kakaoId).name();
-    }
-
-    public record TokenPair(String accessToken, String refreshToken) {}
+    public record TokenPair(String accessToken, String refreshToken, boolean isUser) {}
 }

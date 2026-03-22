@@ -1,5 +1,6 @@
 package com.deadlock.hellocs.global.auth.handler;
 
+import com.deadlock.hellocs.global.auth.controller.AuthController;
 import com.deadlock.hellocs.global.auth.jwt.JwtTokenProvider;
 import com.deadlock.hellocs.user.application.port.in.LoadUserUseCase;
 import jakarta.servlet.http.HttpServletRequest;
@@ -42,7 +43,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
         response.setContentType("application/json;charset=UTF-8");
         objectMapper.writeValue(response.getWriter(),
-                new OAuth2SuccessResponse(accessToken, isUser));
+                new AuthController.AuthTokenResponse(accessToken, isUser));
     }
 
     private void addRefreshTokenCookie(HttpServletResponse response, String refreshToken) {
@@ -55,6 +56,4 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
-
-    private record OAuth2SuccessResponse(String accessToken, boolean isUser) {}
 }
