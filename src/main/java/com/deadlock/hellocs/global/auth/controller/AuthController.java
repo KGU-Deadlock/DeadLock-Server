@@ -27,14 +27,14 @@ public class AuthController implements AuthControllerDocs {
     }
 
     @PostMapping("/reissue")
-    public ApiResponse<ReissueResponse> reissue(
+    public ApiResponse<AuthTokenResponse> reissue(
             @CookieValue("refreshToken") String refreshToken,
             HttpServletResponse response) {
 
         AuthService.TokenPair tokenPair = authService.reissueTokens(refreshToken);
         addRefreshTokenCookie(response, tokenPair.refreshToken());
 
-        return ApiResponse.onSuccess(new ReissueResponse(tokenPair.accessToken()));
+        return ApiResponse.onSuccess(new AuthTokenResponse(tokenPair.accessToken(), tokenPair.isUser()));
     }
 
     private void addRefreshTokenCookie(HttpServletResponse response, String refreshToken) {
@@ -54,6 +54,5 @@ public class AuthController implements AuthControllerDocs {
         // Swagger 명세 전용 엔드포인트입니다.
     }
 
-    public record ReissueResponse(String accessToken) {}
-    public record OAuth2TokenResponse(String accessToken, boolean isUser) {}
+    public record AuthTokenResponse(String accessToken, boolean isUser) {}
 }
