@@ -41,7 +41,7 @@ public class AuthController implements AuthControllerDocs {
         ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken)
                 .httpOnly(true)
                 .secure(true)
-                .path("/api/v1/auth")
+                .path("/")
                 .maxAge(Duration.ofMillis(jwtTokenProvider.getRefreshValidity()))
                 .sameSite("None")
                 .build();
