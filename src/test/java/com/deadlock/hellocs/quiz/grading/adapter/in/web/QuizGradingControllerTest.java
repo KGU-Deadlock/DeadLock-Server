@@ -1,6 +1,7 @@
 package com.deadlock.hellocs.quiz.grading.adapter.in.web;
 
-import com.deadlock.hellocs.global.config.OAuth2LoginSuccessHandler;
+
+import com.deadlock.hellocs.global.auth.handler.OAuth2LoginSuccessHandler;
 import com.deadlock.hellocs.global.config.SecurityConfig;
 import com.deadlock.hellocs.quiz.exception.QuizExceptionHandler;
 import com.deadlock.hellocs.quiz.grading.application.port.in.CommandAnswerInputPort;
@@ -141,7 +142,7 @@ class QuizGradingControllerTest {
                 ))
                 .build();
 
-        given(queryGradingLogInputPort.getGradingLog(new GetGradingLogCommand("log-12345")))
+        given(queryGradingLogInputPort.getGradingLog(12345L, new GetGradingLogCommand("log-12345")))
                 .willReturn(result);
 
         mockMvc.perform(get("/v1/quiz/grading/{gradingLogId}", "log-12345")
@@ -155,7 +156,7 @@ class QuizGradingControllerTest {
                 .andExpect(jsonPath("$.data.gradingResults[0].isCorrect").value(true));
 
         then(queryGradingLogInputPort).should()
-                .getGradingLog(new GetGradingLogCommand("log-12345"));
+                .getGradingLog(12345L, new GetGradingLogCommand("log-12345"));
     }
 
     @Test
@@ -174,7 +175,7 @@ class QuizGradingControllerTest {
                 .improvedAnswer("true")
                 .build();
 
-        given(queryGradingLogInputPort.getGradingDetailLog(new GetGradingDetailLogCommand("log-12345", 101L)))
+        given(queryGradingLogInputPort.getGradingDetailLog(12345L, new GetGradingDetailLogCommand("log-12345", 101L)))
                 .willReturn(result);
 
         mockMvc.perform(get("/v1/quiz/grading/{gradingLogId}/{quizId}", "log-12345", 101L)
@@ -188,6 +189,6 @@ class QuizGradingControllerTest {
                 .andExpect(jsonPath("$.data.correctAnswer").value("true"));
 
         then(queryGradingLogInputPort).should()
-                .getGradingDetailLog(new GetGradingDetailLogCommand("log-12345", 101L));
+                .getGradingDetailLog(12345L, new GetGradingDetailLogCommand("log-12345", 101L));
     }
 }

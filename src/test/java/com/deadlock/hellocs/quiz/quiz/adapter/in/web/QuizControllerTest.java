@@ -1,6 +1,6 @@
 package com.deadlock.hellocs.quiz.quiz.adapter.in.web;
 
-import com.deadlock.hellocs.global.config.OAuth2LoginSuccessHandler;
+import com.deadlock.hellocs.global.auth.handler.OAuth2LoginSuccessHandler;
 import com.deadlock.hellocs.global.config.SecurityConfig;
 import com.deadlock.hellocs.quiz.exception.QuizExceptionHandler;
 import com.deadlock.hellocs.quiz.quiz.application.port.in.QueryQuizInputPort;

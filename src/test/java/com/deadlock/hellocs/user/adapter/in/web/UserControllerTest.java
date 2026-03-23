@@ -166,6 +166,33 @@ class UserControllerTest {
     }
 
     @Test
+    @DisplayName("PATCH /v1/users/me - userName 별칭으로도 닉네임을 수정할 수 있다")
+    void updateMyProfile_withUserNameAlias_success() throws Exception {
+        UpdateMyInfoCommand command = new UpdateMyInfoCommand(
+                "updated",
+                "https://cdn.example.com/profiles/updated.png",
+                List.of(3L, 4L)
+        );
+
+        mockMvc.perform(patch("/v1/users/me")
+                        .with(SecurityMockMvcRequestPostProcessors.jwt().jwt(jwt -> jwt.subject("12345")))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "userName": "updated",
+                                  "profileImage": "https://cdn.example.com/profiles/updated.png",
+                                  "interestTopicIds": [3, 4]
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.isSuccess").value(true))
+                .andExpect(jsonPath("$.code").value("COMMON2000"))
+                .andExpect(jsonPath("$.data").doesNotExist());
+
+        then(manageUserUseCase).should().updateMyInfo(12345L, command);
+    }
+
+    @Test
     @DisplayName("PATCH /v1/users/me - 잘못된 수정 요청이면 400을 반환한다")
     void updateMyProfile_invalidRequest() throws Exception {
         mockMvc.perform(patch("/v1/users/me")
