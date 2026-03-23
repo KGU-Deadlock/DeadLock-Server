@@ -34,7 +34,7 @@ public class AuthController implements AuthControllerDocs {
         AuthService.TokenPair tokenPair = authService.reissueTokens(refreshToken);
         addRefreshTokenCookie(response, tokenPair.refreshToken());
 
-        return ApiResponse.onSuccess(new AuthTokenResponse(tokenPair.accessToken(), tokenPair.isUser()));
+        return ApiResponse.onSuccess(new AuthTokenResponse(tokenPair.accessToken(), tokenPair.isUser(), null));
     }
 
     private void addRefreshTokenCookie(HttpServletResponse response, String refreshToken) {
@@ -54,5 +54,7 @@ public class AuthController implements AuthControllerDocs {
         // Swagger 명세 전용 엔드포인트입니다.
     }
 
-    public record AuthTokenResponse(String accessToken, boolean isUser) {}
+    public record AuthTokenResponse(String accessToken, boolean isUser, UserData userData) {}
+
+    public record UserData(String nickname) {}
 }
