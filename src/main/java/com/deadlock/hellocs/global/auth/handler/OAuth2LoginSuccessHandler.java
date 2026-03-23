@@ -61,7 +61,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken)
                 .httpOnly(true)
                 .secure(true)
-                .path("/api/v1/auth")
+                .path("/")
                 .maxAge(Duration.ofMillis(jwtTokenProvider.getRefreshValidity()))
                 .sameSite("None")
                 .build();
