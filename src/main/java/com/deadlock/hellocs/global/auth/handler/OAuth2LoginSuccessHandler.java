@@ -1,6 +1,7 @@
 package com.deadlock.hellocs.global.auth.handler;
 
 import com.deadlock.hellocs.global.auth.controller.AuthController;
+import com.deadlock.hellocs.global.auth.controller.AuthController.UserData;
 import com.deadlock.hellocs.global.auth.jwt.JwtTokenProvider;
 import com.deadlock.hellocs.user.application.port.in.LoadUserUseCase;
 import jakarta.servlet.http.HttpServletRequest;
@@ -16,6 +17,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
@@ -41,16 +43,25 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
         addRefreshTokenCookie(response, refreshToken);
 
+        UserData userData = isUser ? null : extractUserData(oAuth2User);
+
         response.setContentType("application/json;charset=UTF-8");
         objectMapper.writeValue(response.getWriter(),
-                new AuthController.AuthTokenResponse(accessToken, isUser));
+                new AuthController.AuthTokenResponse(accessToken, isUser, userData));
+    }
+
+    private UserData extractUserData(OAuth2User oAuth2User) {
+        Map<String, Object> kakaoAccount = (Map<String, Object>) oAuth2User.getAttributes().get("kakao_account");
+        Map<String, Object> profile = (Map<String, Object>) kakaoAccount.get("profile");
+        String nickname = (String) profile.get("nickname");
+        return new UserData(nickname);
     }
 
     private void addRefreshTokenCookie(HttpServletResponse response, String refreshToken) {
         ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken)
                 .httpOnly(true)
                 .secure(true)
-                .path("/api/v1/auth")
+                .path("/")
                 .maxAge(Duration.ofMillis(jwtTokenProvider.getRefreshValidity()))
                 .sameSite("None")
                 .build();
