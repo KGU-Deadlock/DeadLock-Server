@@ -1,5 +1,6 @@
 package com.deadlock.hellocs.quiz.grading.domain;
 
+import com.deadlock.hellocs.quiz.shared.domain.QuizMode;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -15,8 +16,11 @@ public class GradingLog {
     private int totalCount;
     private int correctCount;
     private List<GradingItem> results;
+    private QuizMode quizMode;
+    private List<String> topicNames;
 
-    public static GradingLog create(Long userId, List<GradingItem> results) {
+    public static GradingLog create(Long userId, List<GradingItem> results,
+                                    QuizMode quizMode, List<String> topicNames) {
         int correctCount = (int) results.stream()
                 .filter(GradingItem::isCorrect)
                 .count();
@@ -27,6 +31,8 @@ public class GradingLog {
                 .totalCount(results.size())
                 .correctCount(correctCount)
                 .results(results)
+                .quizMode(quizMode)
+                .topicNames(topicNames)
                 .build();
     }
 }

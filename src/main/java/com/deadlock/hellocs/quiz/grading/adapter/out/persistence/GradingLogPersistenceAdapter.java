@@ -9,6 +9,8 @@ import com.deadlock.hellocs.quiz.grading.domain.GradingLog;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
+
 @Component
 @RequiredArgsConstructor
 public class GradingLogPersistenceAdapter implements CommandGradingLogOutputPort, QueryGradingLogOutputPort {
@@ -25,5 +27,12 @@ public class GradingLogPersistenceAdapter implements CommandGradingLogOutputPort
         return gradingLogRepository.findById(id)
                 .map(GradingLogMongoEntity::toDomain)
                 .orElseThrow(() -> new CustomException(QuizErrorStatus.GRADING_LOG_NOT_FOUND));
+    }
+
+    @Override
+    public List<GradingLog> findAllByUserId(Long userId) {
+        return gradingLogRepository.findAllByUserId(userId).stream()
+                .map(GradingLogMongoEntity::toDomain)
+                .toList();
     }
 }

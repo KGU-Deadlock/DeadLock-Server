@@ -3,6 +3,7 @@ package com.deadlock.hellocs.quiz.grading.adapter.in.web;
 import com.deadlock.hellocs.global.apiPayload.ApiResponse;
 import com.deadlock.hellocs.quiz.grading.adapter.in.web.docs.QuizGradingControllerDocs;
 import com.deadlock.hellocs.quiz.grading.application.port.in.dto.GradingDetailLogResult;
+import com.deadlock.hellocs.quiz.grading.application.port.in.dto.GradingLogListResult;
 import com.deadlock.hellocs.quiz.grading.application.port.in.dto.GradingLogResult;
 import com.deadlock.hellocs.quiz.grading.adapter.in.web.dto.SubmitAnswerResponse;
 import com.deadlock.hellocs.quiz.grading.application.port.in.QueryGradingLogInputPort;
@@ -62,6 +63,17 @@ public class QuizGradingController implements QuizGradingControllerDocs {
         Long requesterId = Long.valueOf(jwt.getSubject());
         return ApiResponse.onSuccess(
                 queryGradingLogInputPort.getGradingDetailLog(requesterId, new GetGradingDetailLogCommand(gradingLogId, quizId))
+        );
+    }
+
+    @GetMapping("/list")
+    @Override
+    public ApiResponse<List<GradingLogListResult>> getGradingLogList(
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        Long requesterId = Long.valueOf(jwt.getSubject());
+        return ApiResponse.onSuccess(
+                queryGradingLogInputPort.getGradingLogList(requesterId)
         );
     }
 }
