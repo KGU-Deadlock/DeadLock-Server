@@ -2,6 +2,7 @@ package com.deadlock.hellocs.quiz.grading.adapter.out.persistence.entity;
 
 import com.deadlock.hellocs.quiz.grading.domain.GradingItem;
 import com.deadlock.hellocs.quiz.grading.domain.GradingLog;
+import com.deadlock.hellocs.quiz.shared.domain.QuizMode;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -25,6 +26,8 @@ public class GradingLogMongoEntity {
     private int totalCount;
     private int correctCount;
     private List<GradingItem> results;
+    private QuizMode quizMode;
+    private List<String> topicNames;
 
     public GradingLog toDomain() {
         return GradingLog.builder()
@@ -34,6 +37,8 @@ public class GradingLogMongoEntity {
                 .totalCount(totalCount)
                 .correctCount(correctCount)
                 .results(results)
+                .quizMode(quizMode)
+                .topicNames(topicNames)
                 .build();
     }
 
@@ -45,6 +50,8 @@ public class GradingLogMongoEntity {
                 .totalCount(gradingLog.getTotalCount())
                 .correctCount(gradingLog.getCorrectCount())
                 .results(gradingLog.getResults())
+                .quizMode(gradingLog.getQuizMode())
+                .topicNames(gradingLog.getTopicNames())
                 .build();
     }
 }

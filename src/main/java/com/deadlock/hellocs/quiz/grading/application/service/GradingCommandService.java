@@ -12,6 +12,8 @@ import com.deadlock.hellocs.quiz.grading.domain.GradingLog;
 import com.deadlock.hellocs.quiz.grading.domain.GradingItem;
 import com.deadlock.hellocs.quiz.quiz.application.port.out.QueryQuizOutputPort;
 import com.deadlock.hellocs.quiz.quiz.domain.Quiz;
+import com.deadlock.hellocs.topic.application.port.in.LoadTopicUseCase;
+import com.deadlock.hellocs.quiz.shared.domain.QuizMode;
 import com.deadlock.hellocs.quiz.shared.domain.QuizType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -42,6 +44,7 @@ public class GradingCommandService implements CommandAnswerInputPort {
     private final CommandGradingLogOutputPort commandGradingLogPort;
     private final List<GradingPolicy> gradingPolicies;
     private final ApplicationEventPublisher applicationEventPublisher;
+    private final LoadTopicUseCase loadTopicUseCase;
     
     @Override
     public String submit(SubmitAnswersCommand command) {
@@ -61,8 +64,12 @@ public class GradingCommandService implements CommandAnswerInputPort {
         // 3. 채점 수행 (각 퀴즈 타입에 맞는 정책 적용)
         List<GradingItem> gradingItems = gradeAnswers(answers, quizzes);
 
-        // 4. 채점 로그 생성 및 저장
-        GradingLog gradingLog = GradingLog.create(userId, gradingItems);
+        // 4. 메타데이터 추론
+        QuizMode quizMode = inferQuizMode(quizzes);
+        List<String> topicNames = collectTopicNames(quizzes);
+
+        // 5. 채점 로그 생성 및 저장
+        GradingLog gradingLog = GradingLog.create(userId, gradingItems, quizMode, topicNames);
         GradingLog savedGradingLog = commandGradingLogPort.save(gradingLog);
 
         applicationEventPublisher.publishEvent(new GradingCompletedEvent(
@@ -130,5 +137,19 @@ public class GradingCommandService implements CommandAnswerInputPort {
                 .filter(policy -> policy.supports(quizType))
                 .findFirst()
                 .orElseThrow(() -> new CustomException(QuizErrorStatus.GRADING_POLICY_NOT_FOUND));
+    }
+
+    private QuizMode inferQuizMode(List<Quiz> quizzes) {
+        boolean allVoice = quizzes.stream()
+                .allMatch(quiz -> quiz.getType() == QuizType.VOICE);
+        return allVoice ? QuizMode.VOICE : QuizMode.STANDARD;
+    }
+
+    private List<String> collectTopicNames(List<Quiz> quizzes) {
+        List<Long> topicIds = quizzes.stream()
+                .flatMap(quiz -> quiz.getTopicIds().stream())
+                .distinct()
+                .toList();
+        return loadTopicUseCase.getTopicNames(topicIds);
     }
 }
