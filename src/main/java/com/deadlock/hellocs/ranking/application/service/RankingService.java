@@ -12,6 +12,7 @@ import com.deadlock.hellocs.ranking.application.port.out.UpdateRankingPort;
 import com.deadlock.hellocs.ranking.domain.RankingEntry;
 import com.deadlock.hellocs.user.application.port.in.LoadUserSummaryUseCase;
 import com.deadlock.hellocs.user.application.port.in.UserSummaryResult;
+import com.deadlock.hellocs.user.application.port.out.LoadTopicPort;
 import com.deadlock.hellocs.user.application.port.out.LoadUserPort;
 import com.deadlock.hellocs.user.domain.User;
 import jakarta.validation.Valid;
@@ -38,6 +39,7 @@ public class RankingService implements ApplyRankingScoreInputPort, QueryRankingI
     private final LoadRankingPort loadRankingPort;
     private final LoadUserSummaryUseCase loadUserSummaryUseCase;
     private final LoadUserPort loadUserPort;
+    private final LoadTopicPort loadTopicPort;
 
     @Override
     public void apply(ApplyRankingScoreCommand command) {
@@ -155,11 +157,14 @@ public class RankingService implements ApplyRankingScoreInputPort, QueryRankingI
     }
 
     private MyRankingResult toMyRankingResult(RankingEntry entry, UserSummaryResult userSummary) {
+        List<String> interests = loadCurrentUserInterests(userSummary.kakaoId());
+
         if (entry == null) {
             return new MyRankingResult(
                     userSummary.kakaoId(),
                     userSummary.nickname(),
                     userSummary.profileImage(),
+                    interests,
                     null,
                     0L
             );
@@ -169,9 +174,19 @@ public class RankingService implements ApplyRankingScoreInputPort, QueryRankingI
                 userSummary.kakaoId(),
                 userSummary.nickname(),
                 userSummary.profileImage(),
+                interests,
                 entry.rank(),
                 entry.score()
         );
+    }
+
+    private List<String> loadCurrentUserInterests(Long kakaoId) {
+        User user = loadUserPort.loadUserByKakaoId(kakaoId);
+        List<Long> interestTopicIds = user.getInterestTopicIds();
+        if (interestTopicIds == null || interestTopicIds.isEmpty()) {
+            return List.of();
+        }
+        return loadTopicPort.getTopicNamesByIds(interestTopicIds);
     }
 
     private List<RankingEntryResult> mapRankingEntries(List<RankingEntry> rankings) {
@@ -179,22 +194,66 @@ public class RankingService implements ApplyRankingScoreInputPort, QueryRankingI
             return List.of();
         }
 
+        List<Long> kakaoIds = rankings.stream()
+                .map(RankingEntry::kakaoId)
+                .toList();
         Map<Long, UserSummaryResult> userSummaryMap = loadUserSummaryUseCase.getUserSummaries(
-                        rankings.stream().map(RankingEntry::kakaoId).toList())
+                        kakaoIds)
                 .stream()
                 .collect(Collectors.toMap(UserSummaryResult::kakaoId, Function.identity()));
+        Map<Long, List<String>> interestMap = loadUserInterests(kakaoIds);
 
         return rankings.stream()
-                .map(entry -> toRankingEntryResult(entry, userSummaryMap.get(entry.kakaoId())))
+                .map(entry -> toRankingEntryResult(
+                        entry,
+                        userSummaryMap.get(entry.kakaoId()),
+                        interestMap.getOrDefault(entry.kakaoId(), List.of())
+                ))
                 .toList();
     }
 
-    private RankingEntryResult toRankingEntryResult(RankingEntry entry, UserSummaryResult userSummary) {
+    private Map<Long, List<String>> loadUserInterests(List<Long> kakaoIds) {
+        List<User> users = loadUserPort.loadUsersByKakaoIds(kakaoIds);
+        Map<Long, List<Long>> userTopicIds = users.stream()
+                .collect(Collectors.toMap(
+                        User::getKakaoId,
+                        user -> user.getInterestTopicIds() == null ? List.of() : user.getInterestTopicIds()
+                ));
+
+        List<Long> topicIds = userTopicIds.values().stream()
+                .flatMap(List::stream)
+                .distinct()
+                .toList();
+        if (topicIds.isEmpty()) {
+            return kakaoIds.stream().collect(Collectors.toMap(Function.identity(), ignored -> List.of()));
+        }
+
+        List<String> topicNames = loadTopicPort.getTopicNamesByIds(topicIds);
+        Map<Long, String> topicNameMap = java.util.stream.IntStream.range(0, Math.min(topicIds.size(), topicNames.size()))
+                .boxed()
+                .collect(Collectors.toMap(topicIds::get, topicNames::get));
+
+        return kakaoIds.stream()
+                .collect(Collectors.toMap(
+                        Function.identity(),
+                        kakaoId -> userTopicIds.getOrDefault(kakaoId, List.of()).stream()
+                                .map(topicNameMap::get)
+                                .filter(java.util.Objects::nonNull)
+                                .toList()
+                ));
+    }
+
+    private RankingEntryResult toRankingEntryResult(
+            RankingEntry entry,
+            UserSummaryResult userSummary,
+            List<String> interests
+    ) {
         return new RankingEntryResult(
                 entry.rank(),
                 entry.kakaoId(),
                 userSummary != null ? userSummary.nickname() : null,
                 userSummary != null ? userSummary.profileImage() : null,
+                interests,
                 entry.score()
         );
     }

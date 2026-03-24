@@ -20,10 +20,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-// 수정 표시
 @Tag(
         name = "Ranking",
-        description = "실시간 랭킹 API"
+        description = "사용자 점수 기반 랭킹 조회 API"
 )
 @Validated
 @RestController
@@ -33,13 +32,12 @@ public class RankingController {
 
     private final QueryRankingInputPort queryRankingInputPort;
 
-    // 수정 표시
     @Operation(
-            summary = "실시간 랭킹 요약 조회",
-            description = "인증 없이 전역 랭킹 상위 5명을 조회합니다."
+            summary = "랭킹 요약 조회",
+            description = "인증 없이 전체 랭킹 상위 5명의 순위, 사용자 정보, 누적 점수를 조회합니다."
     )
     @ApiResponses(value = {
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "실시간 랭킹 요약 조회 성공"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "랭킹 요약 조회 성공"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
     @GetMapping("/summary")
@@ -47,13 +45,14 @@ public class RankingController {
         return ApiResponse.onSuccess(queryRankingInputPort.getSummary());
     }
 
-    // 수정 표시
     @Operation(
-            summary = "실시간 랭킹 상세 조회",
-            description = "필터 유형에 따라 랭킹 목록, 내 랭킹 정보, 내 아래 2개 순위 정보를 조회합니다."
+            summary = "랭킹 상세 조회",
+            description = "로그인한 사용자를 기준으로 랭킹 목록을 조회합니다. "
+                    + "`filterType=ALL`이면 전체 랭킹, `filterType=INTEREST`이면 내 관심 주제 기준 랭킹을 반환하며, "
+                    + "응답에는 요청한 랭킹 목록과 내 순위 정보, 내 바로 아래 최대 2명의 순위 정보가 포함됩니다."
     )
     @ApiResponses(value = {
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "실시간 랭킹 상세 조회 성공"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "랭킹 상세 조회 성공"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "filterType 또는 size 파라미터가 올바르지 않음"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증이 필요함"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "서버 내부 오류")
@@ -61,15 +60,13 @@ public class RankingController {
     @GetMapping
     public ApiResponse<RankingDetailResult> getRanking(
             @AuthenticationPrincipal Jwt jwt,
-            // 수정 표시
             @Parameter(
-                    description = "랭킹 필터 유형입니다. ALL 또는 INTEREST를 사용합니다.",
+                    description = "랭킹 조회 기준입니다. `ALL`은 전체 사용자 기준, `INTEREST`는 로그인한 사용자의 관심 주제 기준 랭킹을 의미합니다.",
                     schema = @Schema(defaultValue = "ALL", allowableValues = {"ALL", "INTEREST"})
             )
             @RequestParam(defaultValue = "ALL") String filterType,
-            // 수정 표시
             @Parameter(
-                    description = "조회할 랭킹 인원 수입니다. 기본값은 10이며 최대 100명까지 조회할 수 있습니다.",
+                    description = "반환할 랭킹 목록의 개수입니다. 기본값은 10이며 최대 100까지 요청할 수 있습니다.",
                     schema = @Schema(defaultValue = "10", minimum = "1", maximum = "100")
             )
             @RequestParam(defaultValue = "10") @Min(1) @Max(100) int size

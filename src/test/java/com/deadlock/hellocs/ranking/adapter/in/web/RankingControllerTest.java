@@ -54,8 +54,8 @@ class RankingControllerTest {
     void getRankingSummary_success() throws Exception {
         RankingSummaryResult result = new RankingSummaryResult(
                 List.of(
-                        new RankingEntryResult(1L, 10001L, "cs_runner", "https://cdn.example.com/1.png", 1280L),
-                        new RankingEntryResult(2L, 10002L, "algo_fox", null, 1170L)
+                        new RankingEntryResult(1L, 10001L, "cs_runner", "https://cdn.example.com/1.png", List.of("OS", "Network"), 1280L),
+                        new RankingEntryResult(2L, 10002L, "algo_fox", null, List.of("Database"), 1170L)
                 ),
                 0
         );
@@ -69,6 +69,7 @@ class RankingControllerTest {
                 .andExpect(jsonPath("$.code").value("COMMON2000"))
                 .andExpect(jsonPath("$.data.top5[0].rank").value(1))
                 .andExpect(jsonPath("$.data.top5[0].nickname").value("cs_runner"))
+                .andExpect(jsonPath("$.data.top5[0].interests[0]").value("OS"))
                 .andExpect(jsonPath("$.data.recentRelatedDiscussionCount").value(0));
 
         then(queryRankingInputPort).should().getSummary();
@@ -80,13 +81,13 @@ class RankingControllerTest {
         RankingDetailResult result = new RankingDetailResult(
                 "ALL",
                 List.of(
-                        new RankingEntryResult(1L, 10001L, "cs_runner", "https://cdn.example.com/1.png", 1280L),
-                        new RankingEntryResult(2L, 12345L, "me", null, 1200L)
+                        new RankingEntryResult(1L, 10001L, "cs_runner", "https://cdn.example.com/1.png", List.of("OS"), 1280L),
+                        new RankingEntryResult(2L, 12345L, "me", null, List.of("front-end", "Network"), 1200L)
                 ),
-                new MyRankingResult(12345L, "me", null, 2L, 1200L),
+                new MyRankingResult(12345L, "me", null, List.of("front-end", "Network"), 2L, 1200L),
                 List.of(
-                        new RankingEntryResult(3L, 10003L, "db_master", null, 1180L),
-                        new RankingEntryResult(4L, 10004L, "os_ninja", null, 1100L)
+                        new RankingEntryResult(3L, 10003L, "db_master", null, List.of("Database"), 1180L),
+                        new RankingEntryResult(4L, 10004L, "os_ninja", null, List.of("OS"), 1100L)
                 ),
                 0
         );
@@ -102,7 +103,9 @@ class RankingControllerTest {
                 .andExpect(jsonPath("$.code").value("COMMON2000"))
                 .andExpect(jsonPath("$.data.filterType").value("ALL"))
                 .andExpect(jsonPath("$.data.rankings[1].nickname").value("me"))
+                .andExpect(jsonPath("$.data.rankings[1].interests[0]").value("front-end"))
                 .andExpect(jsonPath("$.data.myRanking.rank").value(2))
+                .andExpect(jsonPath("$.data.myRanking.interests[0]").value("front-end"))
                 .andExpect(jsonPath("$.data.belowMyRankings[0].nickname").value("db_master"));
 
         then(queryRankingInputPort).should().getRanking(12345L, "ALL", 10);
