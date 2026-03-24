@@ -3,6 +3,7 @@ package com.deadlock.hellocs.quiz.grading.adapter.in.web.docs;
 import com.deadlock.hellocs.global.apiPayload.ApiResponse;
 import com.deadlock.hellocs.quiz.grading.adapter.in.web.dto.SubmitAnswerResponse;
 import com.deadlock.hellocs.quiz.grading.application.port.in.dto.GradingDetailLogResult;
+import com.deadlock.hellocs.quiz.grading.application.port.in.dto.GradingLogListResult;
 import com.deadlock.hellocs.quiz.grading.application.port.in.dto.GradingLogResult;
 import com.deadlock.hellocs.quiz.grading.application.port.in.dto.UserGradingCommand;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -115,5 +116,23 @@ public interface QuizGradingControllerDocs {
             String gradingLogId,
             @Parameter(description = "퀴즈 ID", required = true)
             Long quizId
+    );
+
+    @Operation(summary = "채점 기록 목록 조회", description = "자신의 전체 채점 기록 목록을 조회합니다.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "채점 기록 목록 조회 성공"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "401",
+                    description = "인증 실패",
+                    content = @Content
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "500",
+                    description = "서버 내부 오류",
+                    content = @Content
+            )
+    })
+    ApiResponse<List<GradingLogListResult>> getGradingLogList(
+            @Parameter(hidden = true) Jwt jwt
     );
 }

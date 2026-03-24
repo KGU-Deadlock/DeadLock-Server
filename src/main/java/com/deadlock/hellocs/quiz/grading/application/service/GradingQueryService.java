@@ -6,6 +6,7 @@ import com.deadlock.hellocs.quiz.grading.application.port.in.QueryGradingLogInpu
 import com.deadlock.hellocs.quiz.grading.application.port.in.dto.GetGradingDetailLogCommand;
 import com.deadlock.hellocs.quiz.grading.application.port.in.dto.GetGradingLogCommand;
 import com.deadlock.hellocs.quiz.grading.application.port.in.dto.GradingDetailLogResult;
+import com.deadlock.hellocs.quiz.grading.application.port.in.dto.GradingLogListResult;
 import com.deadlock.hellocs.quiz.grading.application.port.in.dto.GradingLogResult;
 import com.deadlock.hellocs.quiz.grading.application.port.out.QueryGradingLogOutputPort;
 import com.deadlock.hellocs.quiz.grading.domain.GradingLog;
@@ -69,6 +70,13 @@ public class GradingQueryService implements QueryGradingLogInputPort {
 
         return GradingDetailLogResult.from(result, quiz);
     }
+    @Override
+    public List<GradingLogListResult> getGradingLogList(Long requesterId) {
+        return queryGradingLogPort.findAllByUserId(requesterId).stream()
+                .map(GradingLogListResult::from)
+                .toList();
+    }
+
     // --- Helper Methods ---
 
     private void validateOwnership(GradingLog gradingLog, Long userId) {
