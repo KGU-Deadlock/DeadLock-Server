@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -73,6 +74,7 @@ public class GradingQueryService implements QueryGradingLogInputPort {
     @Override
     public List<GradingLogListResult> getGradingLogList(Long requesterId) {
         return queryGradingLogPort.findAllByUserId(requesterId).stream()
+                .sorted(Comparator.comparing(GradingLog::getSolvedAt, Comparator.nullsLast(Comparator.reverseOrder())))
                 .map(GradingLogListResult::from)
                 .toList();
     }
