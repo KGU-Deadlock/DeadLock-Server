@@ -228,10 +228,7 @@ public class RankingService implements ApplyRankingScoreInputPort, QueryRankingI
             return kakaoIds.stream().collect(Collectors.toMap(Function.identity(), ignored -> List.of()));
         }
 
-        List<String> topicNames = loadTopicPort.getTopicNamesByIds(topicIds);
-        Map<Long, String> topicNameMap = java.util.stream.IntStream.range(0, Math.min(topicIds.size(), topicNames.size()))
-                .boxed()
-                .collect(Collectors.toMap(topicIds::get, topicNames::get));
+        Map<Long, String> topicNameMap = loadTopicPort.getTopicNameMapByIds(topicIds);
 
         return kakaoIds.stream()
                 .collect(Collectors.toMap(

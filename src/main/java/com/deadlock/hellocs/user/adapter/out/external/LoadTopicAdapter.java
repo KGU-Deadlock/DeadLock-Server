@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
@@ -15,6 +16,11 @@ public class LoadTopicAdapter implements LoadTopicPort {
     @Override
     public List<String> getTopicNamesByIds(List<Long> topicIds) {
         return loadTopicUseCase.getTopicNames(topicIds);
+    }
+
+    @Override
+    public Map<Long, String> getTopicNameMapByIds(List<Long> topicIds) {
+        return loadTopicUseCase.getTopicNameMap(topicIds);
     }
 
     @Override
