@@ -36,6 +36,17 @@ public class QuizPersistenceAdapter implements QueryQuizOutputPort {
     }
 
     @Override
+    public List<Quiz> findQuizzesByCriteria(
+            QuizLevel level,
+            List<Long> topicIds,
+            QuizType type
+    ) {
+        return quizRepository.findByLevelAndTypeAndTopicIds(level, type, topicIds).stream()
+                .map(QuizJpaEntity::toDomain)
+                .toList();
+    }
+
+    @Override
     public Quiz findById(Long quizId) {
         return quizRepository.findById(quizId)
                 .map(QuizJpaEntity::toDomain)
