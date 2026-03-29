@@ -28,5 +28,5 @@ public interface QuizGenerationPolicy {
      * @param queryQuizPort 퀴즈 조회 포트
      * @return 생성된 Quiz 리스트
      */
-    List<Quiz> generate(GetQuizCommand command, QueryQuizOutputPort queryQuizPort);
+    List<Quiz> generate(GetQuizCommand command, QueryQuizOutputPort queryQuizPort, Long userId);
 }

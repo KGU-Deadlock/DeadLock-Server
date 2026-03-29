@@ -14,6 +14,11 @@ public interface QueryQuizOutputPort {
             QuizType type,
             int count
     );
+    List<Quiz> findQuizzesByCriteria(
+            QuizLevel level,
+            List<Long> topicIds,
+            QuizType type
+    );
     Quiz findById(Long quizId);
     List<Quiz> findAllByIds(List<Long> quizIds);
 }

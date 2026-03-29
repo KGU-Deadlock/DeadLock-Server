@@ -7,5 +7,5 @@ import jakarta.validation.constraints.NotNull;
 
 
 public interface QueryQuizInputPort {
-    GetQuizResult getQuizzes(@NotNull @Valid GetQuizCommand request);
+    GetQuizResult getQuizzes(@NotNull @Valid GetQuizCommand request, Long userId);
 }

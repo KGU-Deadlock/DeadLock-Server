@@ -70,7 +70,7 @@ class QuizControllerTest {
         );
 
         given(loadUserUseCase.getUserLevel(12345L)).willReturn(QuizLevel.PRO);
-        given(queryQuizInputPort.getQuizzes(eq(new GetQuizCommand(QuizLevel.PRO, List.of(10L, 20L), QuizMode.STANDARD))))
+        given(queryQuizInputPort.getQuizzes(eq(new GetQuizCommand(QuizLevel.PRO, List.of(10L, 20L), QuizMode.STANDARD)), eq(12345L)))
                 .willReturn(result);
 
         mockMvc.perform(post("/v1/quiz")
@@ -92,7 +92,7 @@ class QuizControllerTest {
 
         then(loadUserUseCase).should().getUserLevel(12345L);
         then(queryQuizInputPort).should()
-                .getQuizzes(new GetQuizCommand(QuizLevel.PRO, List.of(10L, 20L), QuizMode.STANDARD));
+                .getQuizzes(new GetQuizCommand(QuizLevel.PRO, List.of(10L, 20L), QuizMode.STANDARD), 12345L);
     }
 
     @Test

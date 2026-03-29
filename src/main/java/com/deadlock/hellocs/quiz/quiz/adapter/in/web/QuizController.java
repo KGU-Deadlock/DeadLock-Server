@@ -30,6 +30,6 @@ public class QuizController implements QuizControllerDocs {
         Long kakaoId = Long.valueOf(jwtUser.getSubject());
         QuizLevel userLevel = loadUserUseCase.getUserLevel(kakaoId);
         GetQuizCommand request = new GetQuizCommand(userLevel, getQuizRequest.topicIds(), getQuizRequest.mode());
-        return ApiResponse.onSuccess(queryQuizInputPort.getQuizzes(request));
+        return ApiResponse.onSuccess(queryQuizInputPort.getQuizzes(request, kakaoId));
     }
 }

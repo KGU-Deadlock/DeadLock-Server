@@ -35,9 +35,9 @@ public class QuizService implements QueryQuizInputPort {
     private final QueryQuizOutputPort queryQuizPort;
 
     @Override
-    public GetQuizResult getQuizzes(GetQuizCommand request) {
+    public GetQuizResult getQuizzes(GetQuizCommand request, Long userId) {
         QuizGenerationPolicy policy = getGenerationPolicy(request.mode());
-        return mapToGetQuizResult(policy.generate(request, queryQuizPort));
+        return mapToGetQuizResult(policy.generate(request, queryQuizPort, userId));
     }
 
     private QuizGenerationPolicy getGenerationPolicy(QuizMode mode) {
