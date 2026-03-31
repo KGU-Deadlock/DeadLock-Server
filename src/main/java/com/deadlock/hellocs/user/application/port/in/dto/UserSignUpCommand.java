@@ -2,6 +2,7 @@ package com.deadlock.hellocs.user.application.port.in.dto;
 
 import com.deadlock.hellocs.quiz.shared.domain.QuizLevel;
 import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -9,6 +10,7 @@ import jakarta.validation.constraints.Size;
 import java.util.List;
 
 public record UserSignUpCommand(
+        @NotBlank(message = "닉네임은 필수입니다.")
         @Size(max = 12, message = "닉네임은 최대 12자까지 가능합니다.")
         String nickname,
 
