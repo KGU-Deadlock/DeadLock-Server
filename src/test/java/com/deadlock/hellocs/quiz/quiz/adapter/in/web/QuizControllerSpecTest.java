@@ -244,8 +244,8 @@ class QuizControllerSpecTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"topicIds\":[1],\"mode\":\"INVALID\"}"))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.isSuccess").value(false));
-            //TODO: 잘못된 topic id에 대한 예외 처리가 구현되어 있지 않아 500 에러나 나옴.
+                    .andExpect(jsonPath("$.isSuccess").value(false))
+                    .andExpect(jsonPath("$.code").value("COMMON400"));
         }
 
         @Test

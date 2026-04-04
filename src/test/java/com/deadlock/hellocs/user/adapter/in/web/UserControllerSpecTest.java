@@ -508,6 +508,27 @@ class UserControllerSpecTest {
         }
 
         @Test
+        @DisplayName("USR-3-11: 존재하지 않는 topicId 포함 시 400 반환")
+        void nonExistentTopicId_returns400() throws Exception {
+            willThrow(new CustomException(ErrorStatus._BAD_REQUEST))
+                    .given(manageUserUseCase).updateMyInfo(eq(12345L),
+                            eq(new UpdateMyInfoCommand(null, null, List.of(999L))));
+
+            mockMvc.perform(patch("/v1/users/me")
+                            .with(SecurityMockMvcRequestPostProcessors.jwt().jwt(jwt -> jwt.subject(KAKAO_ID)))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {"interestTopicIds": [999]}
+                                    """))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.isSuccess").value(false))
+                    .andExpect(jsonPath("$.code").value("COMMON400"));
+
+            then(manageUserUseCase).should().updateMyInfo(eq(12345L),
+                    eq(new UpdateMyInfoCommand(null, null, List.of(999L))));
+        }
+
+        @Test
         @DisplayName("USR-3-12: JsonAlias(name/userName/username)로 닉네임 수정 성공")
         void jsonAlias_success() throws Exception {
             mockMvc.perform(patch("/v1/users/me")
@@ -539,8 +560,6 @@ class UserControllerSpecTest {
             then(manageUserUseCase).shouldHaveNoInteractions();
         }
 
-        // TODO: USR-3-08 — profileImage 빈 문자열 테스트 (명세 데이터 불완전, 스킵)
-        // TODO: USR-3-11 — 존재하지 않는 topicId 검증 로직이 서비스에 미구현 (보류)
     }
 
     // ==================== API 4: DELETE /v1/users/me ====================
