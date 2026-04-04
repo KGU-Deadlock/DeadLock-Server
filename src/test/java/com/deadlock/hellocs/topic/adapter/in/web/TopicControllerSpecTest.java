@@ -30,7 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(TopicController.class)
 @Import({SecurityConfig.class, GlobalExceptionHandler.class})
 @ActiveProfiles("test")
-class TopicControllerTest {
+class TopicControllerSpecTest {
 
     @Autowired
     private MockMvc mockMvc;
