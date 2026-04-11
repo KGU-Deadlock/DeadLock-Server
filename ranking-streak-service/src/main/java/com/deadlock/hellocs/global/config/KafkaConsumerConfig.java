@@ -1,5 +1,7 @@
 package com.deadlock.hellocs.global.config;
 
+import com.deadlock.hellocs.global.kafka.JacksonDeserializer;
+import com.deadlock.hellocs.global.kafka.JacksonSerializer;
 import com.deadlock.hellocs.shared.events.GradingCompletedEventMessage;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -17,8 +19,6 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
-import org.springframework.kafka.support.serializer.JsonDeserializer;
-import org.springframework.kafka.support.serializer.JsonSerializer;
 import org.springframework.util.backoff.FixedBackOff;
 
 import java.util.HashMap;
@@ -48,17 +48,14 @@ public class KafkaConsumerConfig {
 
     @Bean
     public ConsumerFactory<String, GradingCompletedEventMessage> gradingEventConsumerFactory() {
-        JsonDeserializer<GradingCompletedEventMessage> deserializer =
-                new JsonDeserializer<>(GradingCompletedEventMessage.class, false);
-        deserializer.addTrustedPackages("com.deadlock.hellocs.shared.events");
-
         Map<String, Object> props = new HashMap<>();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
 
-        return new DefaultKafkaConsumerFactory<>(props, new StringDeserializer(), deserializer);
+        return new DefaultKafkaConsumerFactory<>(props, new StringDeserializer(),
+                new JacksonDeserializer<>(GradingCompletedEventMessage.class));
     }
 
     @Bean
@@ -91,9 +88,6 @@ public class KafkaConsumerConfig {
     public ProducerFactory<String, Object> dltProducerFactory() {
         Map<String, Object> props = new HashMap<>();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
-        props.put(JsonSerializer.ADD_TYPE_INFO_HEADERS, false);
-        return new DefaultKafkaProducerFactory<>(props);
+        return new DefaultKafkaProducerFactory<>(props, new StringSerializer(), new JacksonSerializer<>());
     }
 }
