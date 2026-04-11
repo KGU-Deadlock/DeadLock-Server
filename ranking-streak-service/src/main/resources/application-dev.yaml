@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: ranking-streak-service
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password:
+
+  mongodb:
+    uri: mongodb://localhost:27017/hellocs
+
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: ranking-streak-group
+
+jwt:
+  secret: "V29vTmV3U2VjcmV0S2V5Rm9ySldUU2VjdXJpdHlGbG93VHJhY2tlcg=="
+
+core-service:
+  base-url: http://localhost:8080
+
+logging:
+  level:
+    org.springframework.security: DEBUG

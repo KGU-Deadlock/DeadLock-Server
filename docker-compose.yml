@@ -8,10 +8,51 @@ services:
     volumes:
       - /etc/letsencrypt:/etc/letsencrypt:ro
     depends_on:
-      app:
+      core-service:
+        condition: service_healthy
+      ranking-streak-service:
         condition: service_healthy
     networks:
       - proxy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.0
+    restart: always
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - backend
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    restart: always
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server kafka:9092 --list || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
     logging:
       driver: "json-file"
       options:
@@ -85,8 +126,11 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  app:
-    image: deadlock-server:latest
+  core-service:
+    build:
+      context: .
+      dockerfile: core-service/Dockerfile
+    image: deadlock-core:latest
     restart: always
     environment:
       SPRING_PROFILES_ACTIVE: docker
@@ -103,6 +147,7 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       REDIS_TIMEOUT: ${REDIS_TIMEOUT:-3s}
       MONGO_URI: ${MONGO_URI}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       AI_GRADING_EVALUATE_ENDPOINT: ${AI_GRADING_EVALUATE_ENDPOINT}
       AI_STT_TRANSCRIBE_ENDPOINT: ${AI_STT_TRANSCRIBE_ENDPOINT}
       KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID}
@@ -118,6 +163,8 @@ services:
       redis:
         condition: service_healthy
       mongo:
+        condition: service_healthy
+      kafka:
         condition: service_healthy
     expose:
       - "8080"
@@ -150,6 +197,62 @@ services:
         max-size: "10m"
         max-file: "5"
 
+  ranking-streak-service:
+    build:
+      context: .
+      dockerfile: ranking-streak-service/Dockerfile
+    image: deadlock-ranking-streak:latest
+    restart: always
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SERVER_PORT: 8081
+      MANAGEMENT_PORT: 8082
+      TZ: Asia/Seoul
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_TIMEOUT: ${REDIS_TIMEOUT:-3s}
+      MONGO_URI: ${MONGO_URI}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      JWT_SECRET: ${JWT_SECRET}
+      CORE_SERVICE_BASE_URL: http://core-service:8080
+      JAVA_OPTS: ${JAVA_OPTS}
+    depends_on:
+      core-service:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    expose:
+      - "8081"
+      - "8082"
+    networks:
+      - proxy
+      - backend
+      - observability
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+        reservations:
+          memory: 256m
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8082/actuator/health/readiness > /dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
   prometheus:
     image: prom/prometheus:v2.54.1
     restart: always
@@ -161,7 +264,7 @@ services:
       - ./ops/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
     depends_on:
-      app:
+      core-service:
         condition: service_healthy
     networks:
       - observability

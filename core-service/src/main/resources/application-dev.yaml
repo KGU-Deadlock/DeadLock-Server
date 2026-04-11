@@ -1,0 +1,64 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: update   # create / create-drop / validate / none 도 가능
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+  application:
+    name: hellocs
+
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/postgres
+    username: postgres
+    password: 0901
+
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password:
+  mongodb:
+    uri: mongodb://localhost:27017/hellocs
+
+  kafka:
+    bootstrap-servers: localhost:9092
+
+
+  security:
+    oauth2:
+      client:
+        registration:
+          kakao:
+            client-id: "dc779d28ffa2f9888a1e644aeb341cea"
+            client-secret: "bF6r6vXbgaNVOao8igju4Lhs9sNgzkc5"
+            authorization-grant-type: "authorization_code"
+            client-authentication-method: "client_secret_post"
+            redirect-uri: "{baseUrl}/api/v1/auth/token"
+            scope:
+              - "profile_nickname"
+              - "profile_image"
+        provider:
+          kakao:
+            authorization-uri: "https://kauth.kakao.com/oauth/authorize"
+            token-uri: "https://kauth.kakao.com/oauth/token"
+            user-info-uri: "https://kapi.kakao.com/v2/user/me"
+            user-name-attribute: "id"
+
+jwt:
+  secret: "V29vTmV3U2VjcmV0S2V5Rm9ySldUU2VjdXJpdHlGbG93VHJhY2tlcg=="
+  access-token-expiration: "3600000"
+  refresh-token-expiration: "360000000"
+
+logging:
+  level:
+    org.springframework.security: TRACE
+
+ai:
+  grading:
+    evaluate-endpoint: http://localhost:8000/api/feedback/evaluate
+  stt:
+    transcribe-endpoint: http://localhost:8000/api/transcribe

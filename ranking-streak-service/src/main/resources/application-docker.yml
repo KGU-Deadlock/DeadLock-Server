@@ -1,0 +1,61 @@
+server:
+  port: ${SERVER_PORT:8081}
+  shutdown: graceful
+
+spring:
+  application:
+    name: ranking-streak-service
+
+  data:
+    redis:
+      host: ${REDIS_HOST:redis}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 3s
+
+  mongodb:
+    uri: "${MONGO_URI:mongodb://hellocs:change-me@mongo:27017/hellocs?authSource=admin}"
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
+    consumer:
+      group-id: ranking-streak-group
+
+jwt:
+  secret: ${JWT_SECRET:Q2hhbmdlTWVUb0E1NnRvNjRDaGFyU2VjcmV0S2V5QmFzZTY0IQ==}
+
+core-service:
+  base-url: ${CORE_SERVICE_BASE_URL:http://core-service:8080}
+
+management:
+  server:
+    port: ${MANAGEMENT_PORT:8082}
+    address: 0.0.0.0
+  endpoints:
+    access:
+      default: none
+    web:
+      base-path: /actuator
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      access: unrestricted
+      probes:
+        enabled: true
+      show-details: never
+    info:
+      access: unrestricted
+    prometheus:
+      access: unrestricted
+  metrics:
+    tags:
+      application: ranking-streak-service
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+
+logging:
+  level:
+    root: INFO

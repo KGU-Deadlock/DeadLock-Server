@@ -1,0 +1,8 @@
+dependencies {
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+}
+
+// shared-events는 실행 가능한 jar가 아니라 라이브러리이므로 bootJar 비활성화
+bootJar.enabled = false
+jar.enabled = true

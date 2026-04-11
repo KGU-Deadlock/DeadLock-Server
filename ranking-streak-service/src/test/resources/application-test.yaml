@@ -1,0 +1,19 @@
+spring:
+  data:
+    redis:
+      repositories:
+        enabled: false
+
+  mongodb:
+    uri: mongodb://localhost:27017/hellocs-test
+
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: ranking-streak-test-group
+
+jwt:
+  secret: "V29vTmV3U2VjcmV0S2V5Rm9ySldUU2VjdXJpdHlGbG93VHJhY2tlcg=="
+
+core-service:
+  base-url: http://localhost:8080
