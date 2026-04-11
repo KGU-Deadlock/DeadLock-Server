@@ -11,8 +11,6 @@ import com.deadlock.hellocs.streak.application.port.out.LoadStreakPort;
 import com.deadlock.hellocs.streak.application.port.out.SaveStreakPort;
 import com.deadlock.hellocs.streak.domain.DailyStreakRecord;
 import com.deadlock.hellocs.streak.domain.UserStreak;
-import com.deadlock.hellocs.quiz.grading.application.port.out.QueryGradingLogOutputPort;
-import com.deadlock.hellocs.quiz.quiz.application.port.out.QueryQuizOutputPort;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -37,33 +35,21 @@ public class StreakService implements RecordStreakInputPort, QueryStreakInputPor
 
     private final LoadStreakPort loadStreakPort;
     private final SaveStreakPort saveStreakPort;
-    // 수정 표시
-    private final QueryGradingLogOutputPort queryGradingLogOutputPort;
-    // 수정 표시
-    private final QueryQuizOutputPort queryQuizOutputPort;
 
     @Override
-    public void record(RecordStreakCommand command) {
+    public void record(@Valid RecordStreakCommand command) {
         int attempt = 0;
         while (attempt < MAX_RETRY_COUNT) {
             try {
-                // 수정 표시
-                var gradingLog = queryGradingLogOutputPort.findById(command.gradingLogId());
-                var topicIds = queryQuizOutputPort.findAllByIds(
-                                gradingLog.getResults().stream().map(result -> result.quizId()).toList())
-                        .stream()
-                        .flatMap(quiz -> quiz.getTopicIds().stream())
-                        .distinct()
-                        .toList();
-
                 UserStreak userStreak = loadStreakPort.loadByUserId(command.userId())
                         .orElseGet(() -> UserStreak.create(command.userId()));
 
+                // topicIds는 Kafka 이벤트 페이로드에서 직접 전달 (quiz DB 직접 조회 불필요)
                 userStreak.applySolved(
                         command.solvedDate(),
                         command.quizCount(),
                         command.gradingLogId(),
-                        topicIds
+                        command.topicIds()
                 );
                 saveStreakPort.save(userStreak);
                 return;
@@ -78,7 +64,7 @@ public class StreakService implements RecordStreakInputPort, QueryStreakInputPor
 
     @Override
     @Transactional(readOnly = true)
-    public StreakSummaryResult getSummary(Long userId) {
+    public StreakSummaryResult getSummary(@NotNull Long userId) {
         UserStreak userStreak = loadStreakPort.loadByUserId(userId)
                 .orElseGet(() -> UserStreak.create(userId));
         LocalDate today = LocalDate.now();
@@ -92,7 +78,7 @@ public class StreakService implements RecordStreakInputPort, QueryStreakInputPor
 
     @Override
     @Transactional(readOnly = true)
-    public StreakDetailResult getDetail(Long userId) {
+    public StreakDetailResult getDetail(@NotNull Long userId) {
         UserStreak userStreak = loadStreakPort.loadByUserId(userId)
                 .orElseGet(() -> UserStreak.create(userId));
         LocalDate today = LocalDate.now();
@@ -113,9 +99,9 @@ public class StreakService implements RecordStreakInputPort, QueryStreakInputPor
     @Override
     @Transactional(readOnly = true)
     public StreakMonthlyResult getMonthly(
-            Long userId,
-            int year,
-            int month
+            @NotNull Long userId,
+            @Min(2000) int year,
+            @Min(1) @Max(12) int month
     ) {
         UserStreak userStreak = loadStreakPort.loadByUserId(userId)
                 .orElseGet(() -> UserStreak.create(userId));
@@ -144,10 +130,6 @@ public class StreakService implements RecordStreakInputPort, QueryStreakInputPor
             ));
         }
 
-        return new StreakMonthlyResult(
-                year,
-                month,
-                dailyRecords
-        );
+        return new StreakMonthlyResult(year, month, dailyRecords);
     }
 }

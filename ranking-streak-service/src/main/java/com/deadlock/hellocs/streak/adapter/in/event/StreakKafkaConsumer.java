@@ -30,7 +30,8 @@ public class StreakKafkaConsumer {
                     event.gradingLogId(),
                     event.userId(),
                     event.solvedAt().toLocalDate(),
-                    event.quizCount()
+                    event.quizCount(),
+                    event.topicIds() != null ? event.topicIds() : java.util.List.of()
             ));
         } catch (RuntimeException e) {
             log.error("Failed to update streak. gradingLogId={}", event.gradingLogId(), e);
