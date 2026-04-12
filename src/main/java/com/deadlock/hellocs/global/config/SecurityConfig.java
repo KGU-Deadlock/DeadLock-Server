@@ -1,11 +1,8 @@
 package com.deadlock.hellocs.global.config;
 
 import com.deadlock.hellocs.global.apiPayload.code.status.ErrorStatus;
-import com.deadlock.hellocs.global.auth.handler.OAuth2LoginSuccessHandler;
-import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -14,7 +11,6 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.annotation.web.configurers.RequestCacheConfigurer;
 import org.springframework.security.config.annotation.web.configurers.SessionManagementConfigurer;
-import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 
 import org.springframework.web.cors.CorsConfiguration;
@@ -27,7 +23,6 @@ import java.util.List;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
-@RequiredArgsConstructor
 public class SecurityConfig {
 
     private static final String[] SWAGGER_WHITELIST = {
@@ -39,8 +34,6 @@ public class SecurityConfig {
             "/swagger-resources/**",
             "/webjars/**"
     };
-
-    private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -77,18 +70,6 @@ public class SecurityConfig {
     }
 
     @Bean
-    Customizer<HttpSecurity> oauth2Customizer() {
-        return http -> http
-                .oauth2Login(oauth2 -> oauth2
-                        .authorizationEndpoint(auth -> auth
-                                .baseUri("/v1/auth/oauth2"))
-                        .redirectionEndpoint(redirection -> redirection
-                                .baseUri("/v1/auth/token"))
-                        .successHandler(oAuth2LoginSuccessHandler)
-                );
-    }
-
-    @Bean
     Customizer<HttpSecurity> jwtCustomizer() {
         return http -> http
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()));
@@ -103,7 +84,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/v1/topics").permitAll()
                         .requestMatchers(HttpMethod.GET, "/v1/ranking/summary").permitAll()
                         .requestMatchers("/v1/dev/**").permitAll()
-                        .requestMatchers("/v1/ws/**").permitAll() //개발용으로 permitAll, 나중에는 Auth 받아야함.
+                        .requestMatchers("/v1/ws/**").permitAll()
                         .requestMatchers("/v1/users/**").authenticated()
                         .requestMatchers("/v1/quiz/**").authenticated()
                         .requestMatchers("/v1/ranking/**").authenticated()

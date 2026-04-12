@@ -19,6 +19,7 @@ public enum ErrorStatus implements BaseErrorCode {
   _USER_ALREADY_EXISTS(HttpStatus.CONFLICT, "USER409_1", "이미 가입된 사용자입니다."),
   _NICKNAME_ALREADY_EXISTS(HttpStatus.CONFLICT, "USER409", "이미 사용 중인 닉네임입니다."),
   _INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH401", "유효하지 않은 리프레시 토큰입니다."),
+  _INVALID_KAKAO_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH402", "유효하지 않은 카카오 액세스 토큰입니다."),
   ;
 
   private final HttpStatus httpStatus;
