@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -16,7 +17,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-  @ExceptionHandler({ConstraintViolationException.class, BindException.class, MethodArgumentNotValidException.class, HandlerMethodValidationException.class, HttpMessageNotReadableException.class})
+  @ExceptionHandler({ConstraintViolationException.class, BindException.class, MethodArgumentNotValidException.class, HandlerMethodValidationException.class, HttpMessageNotReadableException.class, MethodArgumentTypeMismatchException.class})
   public ResponseEntity<ApiResponse<Object>> handleValidationException(Exception e) {
     log.warn("Validation exception: {}", e.getMessage());
     return ResponseEntity
