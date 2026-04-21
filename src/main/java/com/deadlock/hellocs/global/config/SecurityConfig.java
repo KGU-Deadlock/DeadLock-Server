@@ -83,6 +83,7 @@ public class SecurityConfig {
                         .requestMatchers("/v1/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/v1/topics").permitAll()
                         .requestMatchers(HttpMethod.GET, "/v1/ranking/summary").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/v1/users/*/interest-topic").permitAll()
                         .requestMatchers("/v1/dev/**").permitAll()
                         .requestMatchers("/v1/ws/**").permitAll()
                         .requestMatchers("/v1/users/**").authenticated()

@@ -14,6 +14,8 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/v1/users")
 @RequiredArgsConstructor
@@ -50,6 +52,12 @@ public class UserController implements UserControllerDocs {
         Long kakaoId = Long.valueOf(jwtUser.getSubject());
         manageUserUseCase.deleteMyAccount(kakaoId);
         return ApiResponse.onSuccess(null);
+    }
+
+    @GetMapping("/{userId}/interest-topic")
+    public ApiResponse<Long> getInterestTopicId(@PathVariable Long userId) {
+        List<Long> topicIds = loadUserUseCase.getInterestTopicIds(userId);
+        return ApiResponse.onSuccess(topicIds.getFirst());
     }
 
 }

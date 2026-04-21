@@ -66,7 +66,8 @@ public class GradingCommandService implements CommandAnswerInputPort {
 
         // 4. 메타데이터 추론
         QuizMode quizMode = inferQuizMode(quizzes);
-        List<String> topicNames = collectTopicNames(quizzes);
+        List<Long> topicIds = extractTopicIds(quizzes);
+        List<String> topicNames = loadTopicUseCase.getTopicNames(topicIds);
 
         // 5. 채점 로그 생성 및 저장
         GradingLog gradingLog = GradingLog.create(userId, gradingItems, quizMode, topicNames);
@@ -77,7 +78,8 @@ public class GradingCommandService implements CommandAnswerInputPort {
                 savedGradingLog.getUserId(),
                 savedGradingLog.getSolvedAt(),
                 savedGradingLog.getTotalCount(),
-                savedGradingLog.getResults().stream().mapToInt(GradingItem::score).sum()
+                savedGradingLog.getResults().stream().mapToInt(GradingItem::score).sum(),
+                topicIds
         ));
 
         return savedGradingLog.getId();
@@ -145,11 +147,10 @@ public class GradingCommandService implements CommandAnswerInputPort {
         return allVoice ? QuizMode.VOICE : QuizMode.STANDARD;
     }
 
-    private List<String> collectTopicNames(List<Quiz> quizzes) {
-        List<Long> topicIds = quizzes.stream()
+    private List<Long> extractTopicIds(List<Quiz> quizzes) {
+        return quizzes.stream()
                 .flatMap(quiz -> quiz.getTopicIds().stream())
                 .distinct()
                 .toList();
-        return loadTopicUseCase.getTopicNames(topicIds);
     }
 }

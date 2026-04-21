@@ -1,12 +1,14 @@
 package com.deadlock.hellocs.quiz.grading.application.event;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 public record GradingCompletedEvent(
         String gradingLogId,
         Long userId,
         LocalDateTime solvedAt,
         int quizCount,
-        int totalScore
+        int totalScore,
+        List<Long> topicIds
 ) {
 }
