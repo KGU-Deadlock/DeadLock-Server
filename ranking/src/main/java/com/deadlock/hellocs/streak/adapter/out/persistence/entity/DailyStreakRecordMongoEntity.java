@@ -16,6 +16,13 @@ import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.Set;
 
+/**
+ * 일일 스트릭 기록의 MongoDB 엔티티.
+ *
+ * <p>하루 단위로 사용자의 퀴즈 풀이 현황을 기록하며,
+ * {@code (userId, date)} 복합 유니크 인덱스로 중복 저장을 방지함.
+ * 낙관적 락({@code @Version})을 적용하여 동시 업데이트 충돌을 감지함.</p>
+ */
 @Getter
 @Builder
 @NoArgsConstructor
@@ -33,12 +40,16 @@ public class DailyStreakRecordMongoEntity {
 
     private LocalDate date;
 
+    /** 당일 풀이한 퀴즈 수 (누적 가산됨). */
     private int quizCount;
 
+    /** 당일 하루가 끝날 시점의 연속 스트릭 일수. */
     private int streakAtEndOfDay;
 
+    /** 중복 채점 로그 방지용 — 이미 반영된 gradingLogId를 관리함. */
     private Set<String> appliedGradingLogIds;
 
+    /** 낙관적 락 버전 필드. 동시 저장 시 충돌을 감지하는 데 사용됨. */
     @Version
     private Long version;
 

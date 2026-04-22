@@ -14,6 +14,13 @@ import java.time.YearMonth;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * MongoDB 기반 스트릭 영속성 어댑터.
+ *
+ * <p>{@link LoadStreakPort}와 {@link SaveStreakPort}를 모두 구현하며,
+ * 사용자 스트릭({@code user_streaks})과 일일 기록({@code daily_streak_records})
+ * 두 MongoDB 컬렉션을 관리함.</p>
+ */
 @Component
 @RequiredArgsConstructor
 public class StreakPersistenceAdapter implements LoadStreakPort, SaveStreakPort {

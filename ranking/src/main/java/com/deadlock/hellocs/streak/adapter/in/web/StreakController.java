@@ -22,6 +22,15 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * 스트릭 조회 REST 컨트롤러.
+ *
+ * <ul>
+ *     <li>{@code GET /api/v1/streak}              — 현재 스트릭 요약 (스트릭 일수, 풀이 수, 분야 수)</li>
+ *     <li>{@code GET /api/v1/streak?year=&month=} — 월별 일자별 스트릭 캘린더</li>
+ *     <li>{@code GET /api/v1/streak/detail}       — 상세 통계 (최장 스트릭, 오늘 풀이 여부 등)</li>
+ * </ul>
+ */
 @Tag(
         name = "Streak",
         description = "연속 학습 스트릭 조회 API입니다. 하루 이상 퀴즈를 풀지 않으면 현재 스트릭은 초기화됩니다."
