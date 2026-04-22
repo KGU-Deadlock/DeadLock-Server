@@ -26,9 +26,9 @@ import org.springframework.web.bind.annotation.RestController;
  * 스트릭 조회 REST 컨트롤러.
  *
  * <ul>
- *     <li>{@code GET /api/v1/streak}              — 현재 스트릭 요약 (스트릭 일수, 풀이 수, 분야 수)</li>
- *     <li>{@code GET /api/v1/streak?year=&month=} — 월별 일자별 스트릭 캘린더</li>
- *     <li>{@code GET /api/v1/streak/detail}       — 상세 통계 (최장 스트릭, 오늘 풀이 여부 등)</li>
+ *     <li>{@code GET /v1/streak}              — 현재 스트릭 요약 (스트릭 일수, 풀이 수, 분야 수)</li>
+ *     <li>{@code GET /v1/streak?year=&month=} — 월별 일자별 스트릭 캘린더</li>
+ *     <li>{@code GET /v1/streak/detail}       — 상세 통계 (최장 스트릭, 오늘 풀이 여부 등)</li>
  * </ul>
  */
 @Tag(
@@ -38,7 +38,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Validated
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/streak")
+@RequestMapping("/v1/streak")
 public class StreakController {
 
     private final QueryStreakUseCase queryStreakUseCase;

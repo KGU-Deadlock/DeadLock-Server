@@ -27,13 +27,13 @@ import org.springframework.web.bind.annotation.RestController;
  *
  * <p>두 가지 엔드포인트를 제공함.</p>
  * <ul>
- *     <li>{@code GET /api/v1/ranking/summary} — 비로그인 요약 (상위 5명 + 전체 참가자 수)</li>
- *     <li>{@code GET /api/v1/ranking}         — 로그인 사용자 상세 (상위 N명 + 내 순위 + 주변)</li>
+ *     <li>{@code GET /v1/ranking/summary} — 비로그인 요약 (상위 5명 + 전체 참가자 수)</li>
+ *     <li>{@code GET /v1/ranking}         — 로그인 사용자 상세 (상위 N명 + 내 순위 + 주변)</li>
  * </ul>
  */
 @Tag(name = "Ranking", description = "랭킹 조회 API")
 @RestController
-@RequestMapping("/api/v1/ranking")
+@RequestMapping("/v1/ranking")
 @RequiredArgsConstructor
 @Validated
 public class RankingController {
@@ -75,12 +75,12 @@ public class RankingController {
                     description = "랭킹 조회 기준입니다. `ALL`은 전체 사용자 기준, `INTEREST`는 로그인한 사용자의 관심 주제 기준 랭킹을 의미합니다.",
                     schema = @Schema(defaultValue = "ALL", allowableValues = {"ALL", "INTEREST"})
             )
-            @RequestParam(defaultValue = "ALL") RankingQueryType type,
+            @RequestParam(name = "filterType", defaultValue = "ALL") RankingQueryType type,
             @Parameter(
                     description = "반환할 랭킹 목록의 개수입니다. 기본값은 10이며 최대 100까지 요청할 수 있습니다.",
                     schema = @Schema(defaultValue = "10", minimum = "1", maximum = "100")
             )
-            @RequestParam(defaultValue = "10") @Min(1) @Max(100) int size
+            @RequestParam(name = "size", defaultValue = "10") @Min(1) @Max(100) int size
     ) {
         // JWT subject에는 사용자 ID가 문자열로 들어있다. 서비스 계층에서는 Long으로 다루므로 변환.
         Long userId = Long.valueOf(jwt.getSubject());
