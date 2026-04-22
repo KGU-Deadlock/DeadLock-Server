@@ -1,3 +1,6 @@
+// TODO: global 모듈을 별도 Gradle 서브모듈(:global)로 분리하여 ranking-streak이 직접 의존하도록 변경.
+//       현재 ApiResponse 등 공통 클래스는 루트 프로젝트에 있어 순환 의존성 문제로 복붙으로 임시 처리.
+//       작업 시 루트 → :global, :ranking-streak → :global 의존 구조로 재편 필요.
 plugins {
     id 'java-library'
     id 'io.spring.dependency-management' version '1.1.7'
