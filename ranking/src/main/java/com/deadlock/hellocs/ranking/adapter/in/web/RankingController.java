@@ -22,6 +22,15 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * 랭킹 조회 REST 컨트롤러.
+ *
+ * <p>두 가지 엔드포인트를 제공함.</p>
+ * <ul>
+ *     <li>{@code GET /api/v1/ranking/summary} — 비로그인 요약 (상위 5명 + 전체 참가자 수)</li>
+ *     <li>{@code GET /api/v1/ranking}         — 로그인 사용자 상세 (상위 N명 + 내 순위 + 주변)</li>
+ * </ul>
+ */
 @Tag(name = "Ranking", description = "랭킹 조회 API")
 @RestController
 @RequestMapping("/api/v1/ranking")
@@ -29,6 +38,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Validated
 public class RankingController {
 
+    // 요약(summary) 응답에서 노출할 상위 랭커 수. 고정값으로 관리함.
     private static final int SUMMARY_SIZE = 5;
 
     private final QueryRankingUseCase queryRankingUseCase;
@@ -72,6 +82,7 @@ public class RankingController {
             )
             @RequestParam(defaultValue = "10") @Min(1) @Max(100) int size
     ) {
+        // JWT subject에는 사용자 ID가 문자열로 들어있다. 서비스 계층에서는 Long으로 다루므로 변환.
         Long userId = Long.valueOf(jwt.getSubject());
         return ResponseEntity.ok(queryRankingUseCase.getRankingByType(userId, type, size));
     }
