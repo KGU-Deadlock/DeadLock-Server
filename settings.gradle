@@ -1,2 +1,4 @@
 rootProject.name = 'hellocs'
 include 'ranking-streak'
+include 'global'
+include 'quiz'
