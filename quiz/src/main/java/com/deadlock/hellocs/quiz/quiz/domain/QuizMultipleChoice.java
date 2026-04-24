@@ -15,7 +15,7 @@ import java.util.regex.Pattern;
 @NoArgsConstructor
 @AllArgsConstructor
 public class QuizMultipleChoice extends Quiz {
-    private static final String CHOICE_DELIMITER = "||";
+    private static final String CHOICE_DELIMITER = "<;;;>";
 
     private String content;
     private Integer answer;
