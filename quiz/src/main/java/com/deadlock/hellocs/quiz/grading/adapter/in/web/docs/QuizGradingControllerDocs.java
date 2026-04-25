@@ -82,8 +82,7 @@ public interface QuizGradingControllerDocs {
     })
     ApiResponse<GradingLogResult> getGradingLog(
             @Parameter(hidden = true) Jwt jwt,
-            @Parameter(description = "채점 로그 ID", required = true)
-            String gradingLogId
+            @Parameter(name = "gradingLogId", description = "채점 로그 ID", required = true) String gradingLogId
     );
 
     @Operation(summary = "채점 상세 조회", description = "채점 로그 내 특정 퀴즈의 상세 채점 결과를 조회합니다.")
@@ -112,10 +111,8 @@ public interface QuizGradingControllerDocs {
     })
     ApiResponse<GradingDetailLogResult> getGradingDetailLog(
             @Parameter(hidden = true) Jwt jwt,
-            @Parameter(description = "채점 로그 ID", required = true)
-            String gradingLogId,
-            @Parameter(description = "퀴즈 ID", required = true)
-            Long quizId
+            @Parameter(name = "gradingLogId", description = "채점 로그 ID", required = true) String gradingLogId,
+            @Parameter(name = "quizId", description = "퀴즈 ID", required = true) Long quizId
     );
 
     @Operation(summary = "채점 기록 목록 조회", description = "자신의 전체 채점 기록 목록을 조회합니다.")
