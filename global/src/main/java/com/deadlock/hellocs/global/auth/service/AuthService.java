@@ -5,8 +5,8 @@ import com.deadlock.hellocs.global.auth.client.KakaoApiClient;
 import com.deadlock.hellocs.global.auth.client.KakaoApiClient.KakaoUserInfo;
 import com.deadlock.hellocs.global.auth.controller.AuthController.UserData;
 import com.deadlock.hellocs.global.auth.jwt.JwtTokenProvider;
+import com.deadlock.hellocs.global.auth.port.UserAuthPort;
 import com.deadlock.hellocs.global.exception.CustomException;
-import com.deadlock.hellocs.user.application.port.in.LoadUserUseCase;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtException;
@@ -17,7 +17,7 @@ import org.springframework.stereotype.Service;
 public class AuthService {
 
     private final JwtTokenProvider jwtTokenProvider;
-    private final LoadUserUseCase loadUserUseCase;
+    private final UserAuthPort userAuthPort;
     private final KakaoApiClient kakaoApiClient;
 
     public TokenPair loginWithKakaoAccessToken(String kakaoAccessToken) {
@@ -27,8 +27,8 @@ public class AuthService {
         String kakaoIdStr = String.valueOf(userInfo.id());
         Long kakaoId = userInfo.id();
 
-        boolean isUser = loadUserUseCase.isExist(kakaoId);
-        String role = isUser ? loadUserUseCase.getUserRole(kakaoId).name() : null;
+        boolean isUser = userAuthPort.isExist(kakaoId);
+        String role = isUser ? userAuthPort.getUserRoleName(kakaoId) : null;
 
         UserData userData = null;
         if (!isUser && userInfo.kakaoAccount() != null && userInfo.kakaoAccount().profile() != null) {
@@ -48,8 +48,8 @@ public class AuthService {
         String kakaoIdStr = decodedJwt.getSubject();
         Long kakaoId = Long.valueOf(kakaoIdStr);
 
-        boolean isUser = loadUserUseCase.isExist(kakaoId);
-        String role = isUser ? loadUserUseCase.getUserRole(kakaoId).name() : null;
+        boolean isUser = userAuthPort.isExist(kakaoId);
+        String role = isUser ? userAuthPort.getUserRoleName(kakaoId) : null;
 
         return new TokenPair(
                 jwtTokenProvider.createAccessToken(kakaoIdStr, role),

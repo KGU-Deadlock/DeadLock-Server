@@ -12,8 +12,7 @@ import com.deadlock.hellocs.quiz.grading.domain.GradingLog;
 import com.deadlock.hellocs.quiz.grading.domain.GradingItem;
 import com.deadlock.hellocs.quiz.quiz.application.port.out.QueryQuizOutputPort;
 import com.deadlock.hellocs.quiz.quiz.domain.Quiz;
-// TODO: topic 모듈이 별도 서브모듈로 분리되면 project(':topic') 의존성 추가 및 컴파일 에러 해소 필요
-import com.deadlock.hellocs.topic.application.port.in.LoadTopicUseCase;
+import com.deadlock.hellocs.quiz.grading.application.port.out.QueryTopicOutputPort;
 import com.deadlock.hellocs.quiz.shared.domain.QuizMode;
 import com.deadlock.hellocs.quiz.shared.domain.QuizType;
 import lombok.RequiredArgsConstructor;
@@ -45,7 +44,7 @@ public class GradingCommandService implements CommandAnswerInputPort {
     private final CommandGradingLogOutputPort commandGradingLogPort;
     private final List<GradingPolicy> gradingPolicies;
     private final ApplicationEventPublisher applicationEventPublisher;
-    private final LoadTopicUseCase loadTopicUseCase;
+    private final QueryTopicOutputPort queryTopicPort;
     
     @Override
     public String submit(SubmitAnswersCommand command) {
@@ -68,7 +67,7 @@ public class GradingCommandService implements CommandAnswerInputPort {
         // 4. 메타데이터 추론
         QuizMode quizMode = inferQuizMode(quizzes);
         List<Long> topicIds = extractTopicIds(quizzes);
-        List<String> topicNames = loadTopicUseCase.getTopicNames(topicIds);
+        List<String> topicNames = queryTopicPort.getTopicNames(topicIds);
 
         // 5. 채점 로그 생성 및 저장
         GradingLog gradingLog = GradingLog.create(userId, gradingItems, quizMode, topicNames);
