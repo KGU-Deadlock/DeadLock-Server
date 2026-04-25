@@ -6,9 +6,8 @@ import com.deadlock.hellocs.quiz.quiz.adapter.in.web.dto.GetQuizRequest;
 import com.deadlock.hellocs.quiz.quiz.application.port.in.QueryQuizInputPort;
 import com.deadlock.hellocs.quiz.quiz.application.port.in.dto.GetQuizCommand;
 import com.deadlock.hellocs.quiz.quiz.application.port.in.dto.GetQuizResult;
+import com.deadlock.hellocs.quiz.quiz.application.port.out.QueryUserOutputPort;
 import com.deadlock.hellocs.quiz.shared.domain.QuizLevel;
-// TODO: user 모듈이 별도 서브모듈로 분리되면 project(':user') 의존성 추가 및 컴파일 에러 해소 필요
-import com.deadlock.hellocs.user.application.port.in.LoadUserUseCase;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -20,7 +19,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class QuizController implements QuizControllerDocs {
     private final QueryQuizInputPort queryQuizInputPort;
-    private final LoadUserUseCase loadUserUseCase;
+    private final QueryUserOutputPort queryUserPort;
 
     @PostMapping()
     @Override
@@ -29,7 +28,7 @@ public class QuizController implements QuizControllerDocs {
             @AuthenticationPrincipal Jwt jwtUser
     ) {
         Long kakaoId = Long.valueOf(jwtUser.getSubject());
-        QuizLevel userLevel = loadUserUseCase.getUserLevel(kakaoId);
+        QuizLevel userLevel = queryUserPort.getUserLevel(kakaoId);
         GetQuizCommand request = new GetQuizCommand(userLevel, getQuizRequest.topicIds(), getQuizRequest.mode());
         return ApiResponse.onSuccess(queryQuizInputPort.getQuizzes(request, kakaoId));
     }

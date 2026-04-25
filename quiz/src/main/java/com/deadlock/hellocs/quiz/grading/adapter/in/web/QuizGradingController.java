@@ -45,7 +45,7 @@ public class QuizGradingController implements QuizGradingControllerDocs {
     @Override
     public ApiResponse<GradingLogResult> getGradingLog(
             @AuthenticationPrincipal Jwt jwt,
-            @PathVariable String gradingLogId
+            @PathVariable("gradingLogId") String gradingLogId
     ) {
         Long requesterId = Long.valueOf(jwt.getSubject());
         return ApiResponse.onSuccess(
@@ -57,8 +57,8 @@ public class QuizGradingController implements QuizGradingControllerDocs {
     @Override
     public ApiResponse<GradingDetailLogResult> getGradingDetailLog(
             @AuthenticationPrincipal Jwt jwt,
-            @PathVariable String gradingLogId,
-            @PathVariable Long quizId
+            @PathVariable("gradingLogId") String gradingLogId,
+            @PathVariable("quizId") Long quizId
     ) {
         Long requesterId = Long.valueOf(jwt.getSubject());
         return ApiResponse.onSuccess(
