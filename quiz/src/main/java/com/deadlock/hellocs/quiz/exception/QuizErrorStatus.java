@@ -20,6 +20,9 @@ public enum QuizErrorStatus implements BaseErrorCode {
     GRADING_QUIZ_NOT_FOUND(HttpStatus.NOT_FOUND, "GRADING4043", "채점 대상 퀴즈를 찾을 수 없습니다."),
     GRADING_POLICY_NOT_FOUND(HttpStatus.INTERNAL_SERVER_ERROR, "GRADING5001", "요청한 퀴즈 유형에 대한 채점 정책을 찾을 수 없습니다."),
     GRADING_AI_EVALUATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "GRADING5002", "AI 채점 서비스 호출에 실패했습니다."),
+
+    QUIZ_SESSION_NOT_FOUND(HttpStatus.BAD_REQUEST, "QUIZ4002", "퀴즈 세션이 존재하지 않습니다. 퀴즈를 먼저 조회하세요."),
+    QUIZ_SESSION_SERIALIZE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "QUIZ5002", "퀴즈 세션 직렬화에 실패했습니다."),
     ;
 
     private final HttpStatus httpStatus;
