@@ -3,74 +3,52 @@ package com.deadlock.hellocs.quiz.grading.application.service;
 import com.deadlock.hellocs.global.exception.CustomException;
 import com.deadlock.hellocs.quiz.exception.QuizErrorStatus;
 import com.deadlock.hellocs.quiz.grading.application.event.GradingCompletedEvent;
-import com.deadlock.hellocs.quiz.grading.application.policy.GradingPolicy;
 import com.deadlock.hellocs.quiz.grading.application.port.in.CommandAnswerInputPort;
 import com.deadlock.hellocs.quiz.grading.application.port.in.dto.SubmitAnswersCommand;
 import com.deadlock.hellocs.quiz.grading.application.port.in.dto.UserGradingCommand;
 import com.deadlock.hellocs.quiz.grading.application.port.out.CommandGradingLogOutputPort;
-import com.deadlock.hellocs.quiz.grading.domain.GradingLog;
+import com.deadlock.hellocs.quiz.grading.application.port.out.QueryGradingTargetOutputPort;
+import com.deadlock.hellocs.quiz.grading.application.port.out.dto.GradingSessionView;
+import com.deadlock.hellocs.quiz.grading.application.port.out.dto.GradingTarget;
+import com.deadlock.hellocs.quiz.grading.application.strategy.GradingStrategyRegistry;
 import com.deadlock.hellocs.quiz.grading.domain.GradingItem;
-import com.deadlock.hellocs.quiz.quiz.application.port.out.QueryQuizOutputPort;
-import com.deadlock.hellocs.quiz.quiz.domain.Quiz;
-import com.deadlock.hellocs.quiz.grading.application.port.out.QueryTopicOutputPort;
-import com.deadlock.hellocs.quiz.shared.domain.QuizMode;
-import com.deadlock.hellocs.quiz.shared.domain.QuizType;
+import com.deadlock.hellocs.quiz.grading.domain.GradingLog;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 /**
- * 채점 Command 서비스 (CUD 담당)
- * 
- * 책임:
- * - 답안 제출 및 채점 수행 (Create)
- * - 채점 결과 저장
+ * 채점 오케스트레이터. {@link QuizGradingController}에서 호출됨.
+ * <p>흐름: 세션 조회 → {@link GradingStrategyRegistry}로 전략 선택 → 채점 → {@link GradingLog} 저장 → {@link GradingCompletedEvent} 발행</p>
  */
 @Service
 @RequiredArgsConstructor
 @Transactional
 @Validated
 public class GradingCommandService implements CommandAnswerInputPort {
-    
-    private final QueryQuizOutputPort queryQuizPort;
+
+    private final QueryGradingTargetOutputPort queryGradingTargetPort;
     private final CommandGradingLogOutputPort commandGradingLogPort;
-    private final List<GradingPolicy> gradingPolicies;
+    private final GradingStrategyRegistry gradingStrategyRegistry;
     private final ApplicationEventPublisher applicationEventPublisher;
-    private final QueryTopicOutputPort queryTopicPort;
-    
+
+    /** 세션 조회 → 전략별 채점 → 로그 저장 → 이벤트 발행 순으로 처리하며, 채점 로그 ID를 반환함. */
     @Override
     public String submit(SubmitAnswersCommand command) {
-        if (command == null) {
-            throw new CustomException(QuizErrorStatus.GRADING_REQUEST_INVALID);
-        }
-        Long userId = command.userId();
         List<UserGradingCommand> answers = command.answers();
 
-        // 1. 퀴즈 ID 추출
         List<Long> quizIds = extractQuizIds(answers);
-        validateQuizIds(quizIds);
 
-        // 2. 퀴즈 조회
-        List<Quiz> quizzes = loadQuizzes(quizIds);
+        GradingSessionView session = queryGradingTargetPort.fetchSession(command.userId(), quizIds);
 
-        // 3. 채점 수행 (각 퀴즈 타입에 맞는 정책 적용)
-        List<GradingItem> gradingItems = gradeAnswers(answers, quizzes);
+        List<GradingItem> gradingItems = gradeAnswers(answers, session.targets());
 
-        // 4. 메타데이터 추론
-        QuizMode quizMode = inferQuizMode(quizzes);
-        List<Long> topicIds = extractTopicIds(quizzes);
-        List<String> topicNames = queryTopicPort.getTopicNames(topicIds);
-
-        // 5. 채점 로그 생성 및 저장
-        GradingLog gradingLog = GradingLog.create(userId, gradingItems, quizMode, topicNames);
+        GradingLog gradingLog = GradingLog.create(command.userId(), gradingItems, session.topicNames());
         GradingLog savedGradingLog = commandGradingLogPort.save(gradingLog);
 
         applicationEventPublisher.publishEvent(new GradingCompletedEvent(
@@ -79,13 +57,11 @@ public class GradingCommandService implements CommandAnswerInputPort {
                 savedGradingLog.getSolvedAt(),
                 savedGradingLog.getTotalCount(),
                 savedGradingLog.getResults().stream().mapToInt(GradingItem::score).sum(),
-                topicIds
+                session.topicIds()
         ));
 
         return savedGradingLog.getId();
     }
-
-    // --- Helper Methods ---
 
     private List<Long> extractQuizIds(List<UserGradingCommand> answers) {
         return answers.stream()
@@ -93,64 +69,18 @@ public class GradingCommandService implements CommandAnswerInputPort {
                 .toList();
     }
 
-    private void validateQuizIds(List<Long> quizIds) {
-        long uniqueCount = quizIds.stream().distinct().count();
-        if (uniqueCount != quizIds.size()) {
-            throw new CustomException(QuizErrorStatus.GRADING_REQUEST_INVALID);
-        }
-    }
 
-    private List<Quiz> loadQuizzes(List<Long> quizIds) {
-        List<Quiz> quizzes = queryQuizPort.findAllByIds(quizIds);
-
-        if (quizzes.size() != quizIds.size()) {
-            throw new CustomException(QuizErrorStatus.GRADING_QUIZ_NOT_FOUND);
-        }
-        return quizzes;
-    }
-
-    private List<GradingItem> gradeAnswers(List<UserGradingCommand> answers, List<Quiz> quizzes) {
-        List<GradingItem> results = new ArrayList<>();
-        Map<Long, Quiz> quizMap = quizzes.stream()
-                .collect(Collectors.toMap(Quiz::getId, Function.identity()));
-
-        for (UserGradingCommand userGradingCommand : answers) {
-            Quiz quiz = findQuiz(quizMap, userGradingCommand.quizId());
-            results.add(gradeAnswer(quiz, userGradingCommand.answer()));
-        }
-        return results;
-    }
-
-    private Quiz findQuiz(Map<Long, Quiz> quizMap, Long quizId) {
-        Quiz quiz = quizMap.get(quizId);
-        if (quiz == null) {
-            throw new CustomException(QuizErrorStatus.GRADING_QUIZ_NOT_FOUND);
-        }
-        return quiz;
-    }
-
-    private GradingItem gradeAnswer(Quiz quiz, String answer) {
-        GradingPolicy policy = findGradingPolicy(quiz.getType());
-        return policy.grade(quiz, answer);
-    }
-
-    private GradingPolicy findGradingPolicy(QuizType quizType) {
-        return gradingPolicies.stream()
-                .filter(policy -> policy.supports(quizType))
-                .findFirst()
-                .orElseThrow(() -> new CustomException(QuizErrorStatus.GRADING_POLICY_NOT_FOUND));
-    }
-
-    private QuizMode inferQuizMode(List<Quiz> quizzes) {
-        boolean allVoice = quizzes.stream()
-                .allMatch(quiz -> quiz.getType() == QuizType.VOICE);
-        return allVoice ? QuizMode.VOICE : QuizMode.STANDARD;
-    }
-
-    private List<Long> extractTopicIds(List<Quiz> quizzes) {
-        return quizzes.stream()
-                .flatMap(quiz -> quiz.getTopicIds().stream())
-                .distinct()
+    private List<GradingItem> gradeAnswers(List<UserGradingCommand> answers, Map<Long, GradingTarget> targets) {
+        return answers.stream()
+                .map(answer -> {
+                    GradingTarget target = targets.get(answer.quizId());
+                    if (target == null) throw new CustomException(QuizErrorStatus.GRADING_QUIZ_NOT_FOUND);
+                    return gradeAnswer(target, answer.answer());
+                })
                 .toList();
+    }
+
+    private GradingItem gradeAnswer(GradingTarget target, String answer) {
+        return gradingStrategyRegistry.resolve(target.type()).grade(target, answer);
     }
 }

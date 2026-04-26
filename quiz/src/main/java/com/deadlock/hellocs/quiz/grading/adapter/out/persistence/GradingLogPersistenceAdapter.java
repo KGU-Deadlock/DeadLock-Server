@@ -11,6 +11,9 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
+/**
+ * MongoDB 기반 채점 로그 영속성 어댑터. {@link GradingLogMongoEntity}와 도메인 객체 간 변환을 처리함.
+ */
 @Component
 @RequiredArgsConstructor
 public class GradingLogPersistenceAdapter implements CommandGradingLogOutputPort, QueryGradingLogOutputPort {

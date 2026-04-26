@@ -20,6 +20,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * 채점 REST 컨트롤러. 답안 제출({@code POST /}) 및 채점 로그 조회({@code GET /}) 엔드포인트를 제공함.
+ */
 @RestController
 @RequestMapping("/v1/quiz/grading")
 @RequiredArgsConstructor

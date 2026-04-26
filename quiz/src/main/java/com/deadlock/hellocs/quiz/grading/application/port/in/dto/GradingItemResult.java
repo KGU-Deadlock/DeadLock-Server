@@ -1,7 +1,6 @@
 package com.deadlock.hellocs.quiz.grading.application.port.in.dto;
 
 import com.deadlock.hellocs.quiz.grading.domain.GradingItem;
-import com.deadlock.hellocs.quiz.quiz.domain.Quiz;
 import lombok.Builder;
 
 @Builder
@@ -11,11 +10,11 @@ public record GradingItemResult(
         String quizType,
         boolean isCorrect
 ) {
-    public static GradingItemResult from(GradingItem gradingItem, Quiz quiz) {
+    public static GradingItemResult from(GradingItem gradingItem) {
         return GradingItemResult.builder()
                 .quizId(gradingItem.quizId())
-                .content(quiz.getContent())
-                .quizType(quiz.getType().getDescription())
+                .content(gradingItem.quizContent())
+                .quizType(gradingItem.quizType().getDescription())
                 .isCorrect(gradingItem.isCorrect())
                 .build();
     }

@@ -1,7 +1,6 @@
 package com.deadlock.hellocs.quiz.grading.application.port.in.dto;
 
 import com.deadlock.hellocs.quiz.grading.domain.GradingItem;
-import com.deadlock.hellocs.quiz.quiz.domain.Quiz;
 import lombok.Builder;
 
 import java.util.List;
@@ -19,15 +18,15 @@ public record GradingDetailLogResult(
         List<String> missingKeywords,
         String improvedAnswer
 ) {
-    public static GradingDetailLogResult from(GradingItem gradingItem, Quiz quiz) {
+    public static GradingDetailLogResult from(GradingItem gradingItem) {
         return GradingDetailLogResult.builder()
                 .quizId(gradingItem.quizId())
                 .score(gradingItem.score())
                 .isCorrect(gradingItem.isCorrect())
-                .content(quiz.getContent())
-                .quizType(quiz.getType().getDescription())
+                .content(gradingItem.quizContent())
+                .quizType(gradingItem.quizType().getDescription())
                 .userAnswer(gradingItem.userAnswer())
-                .correctAnswer(quiz.getAnswer().asString())
+                .correctAnswer(gradingItem.correctAnswer())
                 .feedback(gradingItem.feedback())
                 .missingKeywords(gradingItem.missingKeywords())
                 .improvedAnswer(gradingItem.improvedAnswer())

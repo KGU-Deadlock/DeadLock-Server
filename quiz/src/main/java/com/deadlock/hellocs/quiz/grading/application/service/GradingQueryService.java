@@ -9,10 +9,8 @@ import com.deadlock.hellocs.quiz.grading.application.port.in.dto.GradingDetailLo
 import com.deadlock.hellocs.quiz.grading.application.port.in.dto.GradingLogListResult;
 import com.deadlock.hellocs.quiz.grading.application.port.in.dto.GradingLogResult;
 import com.deadlock.hellocs.quiz.grading.application.port.out.QueryGradingLogOutputPort;
-import com.deadlock.hellocs.quiz.grading.domain.GradingLog;
 import com.deadlock.hellocs.quiz.grading.domain.GradingItem;
-import com.deadlock.hellocs.quiz.quiz.application.port.out.QueryQuizOutputPort;
-import com.deadlock.hellocs.quiz.quiz.domain.Quiz;
+import com.deadlock.hellocs.quiz.grading.domain.GradingLog;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,55 +20,34 @@ import java.util.Comparator;
 import java.util.List;
 
 /**
- * 채점 Query 서비스 (Read 담당)
- * 
- * 책임:
- * - 채점 기록 조회
- * - 채점 상세 결과 조회
+ * 채점 로그 조회 서비스. 모든 조회 전에 요청자가 로그의 소유자인지 검증함.
  */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 @Validated
 public class GradingQueryService implements QueryGradingLogInputPort {
-    
-    private final QueryGradingLogOutputPort queryGradingLogPort;
-    // TODO: Output 포트 써도 되나 점검. 같은모듈이라 상관없나? 안되면 Input 포트로 구혆
-    private final QueryQuizOutputPort queryQuizOutputPort;
 
+    private final QueryGradingLogOutputPort queryGradingLogPort;
+
+    /** 채점 로그 전체 요약(정답 수, 문제 수, 결과 목록)을 반환함. */
     @Override
     public GradingLogResult getGradingLog(Long requesterId, GetGradingLogCommand command) {
-        if (command == null) {
-            throw new CustomException(QuizErrorStatus.GRADING_REQUEST_INVALID);
-        }
-        String gradingLogId = command.gradingLogId();
-
-        GradingLog gradingLog = queryGradingLogPort.findById(gradingLogId);
+        GradingLog gradingLog = queryGradingLogPort.findById(command.gradingLogId());
         validateOwnership(gradingLog, requesterId);
-        List<Long> quizIds = gradingLog.getResults().stream()
-                .map(GradingItem::quizId)
-                .toList();
-        List<Quiz> quizzes = queryQuizOutputPort.findAllByIds(quizIds);
-
-        validateLoadedQuizzes(quizIds, quizzes);
-        return GradingLogResult.from(gradingLog, quizzes);
+        return GradingLogResult.from(gradingLog);
     }
 
+    /** 특정 퀴즈의 상세 채점 결과(피드백, 누락 키워드, 개선 답변 포함)를 반환함. */
     @Override
     public GradingDetailLogResult getGradingDetailLog(Long requesterId, GetGradingDetailLogCommand command) {
-        if (command == null) {
-            throw new CustomException(QuizErrorStatus.GRADING_REQUEST_INVALID);
-        }
-        String gradingLogId = command.gradingLogId();
-        Long quizId = command.quizId();
-
-        GradingLog gradingLog = queryGradingLogPort.findById(gradingLogId);
+        GradingLog gradingLog = queryGradingLogPort.findById(command.gradingLogId());
         validateOwnership(gradingLog, requesterId);
-        GradingItem result = getGradingResult(gradingLog, quizId);
-        Quiz quiz = loadQuiz(quizId);
-
-        return GradingDetailLogResult.from(result, quiz);
+        GradingItem result = getGradingResult(gradingLog, command.quizId());
+        return GradingDetailLogResult.from(result);
     }
+
+    /** 사용자의 모든 채점 로그를 최신순으로 반환함. */
     @Override
     public List<GradingLogListResult> getGradingLogList(Long requesterId) {
         return queryGradingLogPort.findAllByUserId(requesterId).stream()
@@ -79,29 +56,10 @@ public class GradingQueryService implements QueryGradingLogInputPort {
                 .toList();
     }
 
-    // --- Helper Methods ---
-
+    /** 다른 사용자의 채점 로그에 접근하는 경우 {@code GRADING_ACCESS_DENIED} 예외를 던짐. */
     private void validateOwnership(GradingLog gradingLog, Long userId) {
         if (!gradingLog.getUserId().equals(userId)) {
             throw new CustomException(QuizErrorStatus.GRADING_ACCESS_DENIED);
-        }
-    }
-
-    private void validateLoadedQuizzes(List<Long> quizIds, List<Quiz> quizzes) {
-        long uniqueQuizIdCount = quizIds.stream().distinct().count();
-        if (quizzes.size() != uniqueQuizIdCount) {
-            throw new CustomException(QuizErrorStatus.GRADING_QUIZ_NOT_FOUND);
-        }
-    }
-
-    private Quiz loadQuiz(Long quizId) {
-        try {
-            return queryQuizOutputPort.findById(quizId);
-        } catch (CustomException e) {
-            if (e.getErrorCode() == QuizErrorStatus.QUIZ_NOT_FOUND) {
-                throw new CustomException(QuizErrorStatus.GRADING_QUIZ_NOT_FOUND);
-            }
-            throw e;
         }
     }
 
