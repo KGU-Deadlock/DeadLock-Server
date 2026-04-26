@@ -10,10 +10,13 @@ import com.deadlock.hellocs.quiz.quiz.application.port.in.dto.MultipleChoiceQuiz
 import com.deadlock.hellocs.quiz.quiz.application.port.in.dto.OxQuizResult;
 import com.deadlock.hellocs.quiz.quiz.application.port.in.dto.ShortAnswerQuizResult;
 import com.deadlock.hellocs.quiz.quiz.application.port.in.dto.VoiceQuizResult;
+import com.deadlock.hellocs.quiz.quiz.application.port.out.CommandQuizSessionOutputPort;
 import com.deadlock.hellocs.quiz.quiz.application.port.out.QueryQuizOutputPort;
 import com.deadlock.hellocs.quiz.quiz.domain.Quiz;
 import com.deadlock.hellocs.quiz.quiz.domain.QuizMultipleChoice;
 import com.deadlock.hellocs.quiz.quiz.domain.QuizOx;
+import com.deadlock.hellocs.quiz.quiz.domain.QuizSession;
+import com.deadlock.hellocs.quiz.quiz.domain.QuizSessionEntry;
 import com.deadlock.hellocs.quiz.quiz.domain.QuizShortAnswer;
 import com.deadlock.hellocs.quiz.quiz.domain.QuizVoice;
 import com.deadlock.hellocs.quiz.shared.domain.QuizMode;
@@ -24,6 +27,8 @@ import org.springframework.validation.annotation.Validated;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -33,11 +38,35 @@ public class QuizService implements QueryQuizInputPort {
 
     private final List<QuizGenerationPolicy> generationPolicies;
     private final QueryQuizOutputPort queryQuizPort;
+    private final CommandQuizSessionOutputPort commandQuizSessionPort;
 
     @Override
     public GetQuizResult getQuizzes(GetQuizCommand request, Long userId) {
         QuizGenerationPolicy policy = getGenerationPolicy(request.mode());
-        return mapToGetQuizResult(policy.generate(request, queryQuizPort, userId));
+        List<Quiz> quizzes = policy.generate(request, queryQuizPort, userId);
+        saveQuizSession(userId, request.mode(), quizzes);
+        return mapToGetQuizResult(quizzes);
+    }
+
+    private void saveQuizSession(Long userId, QuizMode mode, List<Quiz> quizzes) {
+        List<Long> topicIds = quizzes.stream()
+                .flatMap(q -> q.getTopicIds().stream())
+                .distinct()
+                .toList();
+
+        Map<Long, QuizSessionEntry> entries = quizzes.stream()
+                .collect(Collectors.toMap(
+                        Quiz::getId,
+                        q -> new QuizSessionEntry(
+                                q.getId(),
+                                q.getType(),
+                                q.getContent(),
+                                q.getAnswer().asString(),
+                                q.getExplain()
+                        )
+                ));
+
+        commandQuizSessionPort.save(new QuizSession(userId, mode, topicIds, entries));
     }
 
     private QuizGenerationPolicy getGenerationPolicy(QuizMode mode) {
