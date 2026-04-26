@@ -3,65 +3,59 @@ package com.deadlock.hellocs.quiz.grading.adapter.out.external;
 import com.deadlock.hellocs.global.exception.CustomException;
 import com.deadlock.hellocs.quiz.exception.QuizErrorStatus;
 import com.deadlock.hellocs.quiz.grading.application.port.out.CommandAiGradingOutputPort;
-import com.deadlock.hellocs.quiz.grading.domain.GradingItem;
-import com.deadlock.hellocs.quiz.quiz.domain.Quiz;
+import com.deadlock.hellocs.quiz.grading.application.port.out.dto.AiFeedback;
+import com.deadlock.hellocs.quiz.grading.application.port.out.dto.GradingTarget;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
 
 import java.net.http.HttpClient;
+import java.time.Duration;
 import java.util.List;
+import java.util.Objects;
 
 /**
- * AI 채점 External Adapter
- *
- * 실제 AI 서비스 호출
+ * 외부 AI 채점 서버와 통신하는 어댑터.
+ * <p>설정값({@code ai.grading.*})으로 엔드포인트·타임아웃을 주입받아 {@link RestClient}로 호출함.</p>
  */
 @Component
 @Slf4j
-@RequiredArgsConstructor
 public class AiGradingAdapter implements CommandAiGradingOutputPort {
 
-    @Value("${ai.grading.evaluate-endpoint}")
-    private String evaluateEndpoint;
+    private final RestClient restClient;
+    private final String evaluateEndpoint;
 
-    @Override
-    public GradingItem gradeWithAi(Quiz quiz, String userAnswer) {
-        FeedbackRequest request = new FeedbackRequest(
-                quiz.getContent(),
-                userAnswer,
-                quiz.getAnswer().asString()
-        );
-
-        FeedbackResponse response = evaluate(request);
-        int normalizedScore = normalizeScore(response.score());
-
-        return GradingItem.builder()
-                .quizId(quiz.getId())
-                .score(normalizedScore)
-                .isCorrect(normalizedScore >= 70)
-                .userAnswer(userAnswer)
-                .feedback(response.message())
-                .missingKeywords(response.missingKeywords() == null ? List.of() : response.missingKeywords())
-                .improvedAnswer(response.improvedAnswer())
+    public AiGradingAdapter(
+            @Value("${ai.grading.evaluate-endpoint}") String evaluateEndpoint,
+            @Value("${ai.grading.connect-timeout:2000}") long connectTimeoutMs,
+            @Value("${ai.grading.read-timeout:10000}") long readTimeoutMs
+    ) {
+        HttpClient httpClient = HttpClient.newBuilder()
+                .version(HttpClient.Version.HTTP_1_1)
+                .connectTimeout(Duration.ofMillis(connectTimeoutMs))
                 .build();
+        JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(httpClient);
+        factory.setReadTimeout(Duration.ofMillis(readTimeoutMs));
+
+        this.restClient = RestClient.builder().requestFactory(factory).build();
+        this.evaluateEndpoint = evaluateEndpoint;
     }
 
-    private FeedbackResponse evaluate(FeedbackRequest request) {
+    /** 퀴즈·정답·사용자 답변을 AI 서버에 전달하고 피드백을 받음. */
+    @Override
+    public AiFeedback evaluate(GradingTarget target, String userAnswer) {
+        FeedbackRequest request = new FeedbackRequest(target.content(), userAnswer, target.correctAnswer());
+        return callEvaluateApi(request);
+    }
+
+    /** AI 서버 호출 실패 또는 응답 파싱 오류 시 {@code GRADING_AI_EVALUATION_FAILED} 예외를 던짐. */
+    private AiFeedback callEvaluateApi(FeedbackRequest request) {
         try {
-            HttpClient httpClient = HttpClient.newBuilder()
-                    .version(HttpClient.Version.HTTP_1_1)
-                    .build();
-
-            RestClient restClient = RestClient.builder()
-                    .requestFactory(new JdkClientHttpRequestFactory(httpClient))
-                    .build();
-
             FeedbackResponse response = restClient.post()
                     .uri(evaluateEndpoint)
                     .contentType(MediaType.APPLICATION_JSON)
@@ -70,18 +64,13 @@ public class AiGradingAdapter implements CommandAiGradingOutputPort {
                     .retrieve()
                     .body(FeedbackResponse.class);
 
-            if (response == null) {
-                throw new CustomException(QuizErrorStatus.GRADING_AI_EVALUATION_FAILED);
-            }
-            return response;
-        } catch (Exception e) {
+            Objects.requireNonNull(response);
+            return new AiFeedback(response.score(), response.message(), response.missingKeywords(), response.improvedAnswer());
+
+        } catch (RestClientException | NullPointerException e) {
             log.error("AI grading request failed. endpoint={}", evaluateEndpoint, e);
             throw new CustomException(QuizErrorStatus.GRADING_AI_EVALUATION_FAILED);
         }
-    }
-
-    private int normalizeScore(int score) {
-        return Math.max(0, Math.min(100, score));
     }
 
     private record FeedbackRequest(

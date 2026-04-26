@@ -2,7 +2,6 @@ package com.deadlock.hellocs.quiz.grading.adapter.out.persistence.entity;
 
 import com.deadlock.hellocs.quiz.grading.domain.GradingItem;
 import com.deadlock.hellocs.quiz.grading.domain.GradingLog;
-import com.deadlock.hellocs.quiz.shared.domain.QuizMode;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -13,6 +12,9 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * {@code grading_logs} 컬렉션에 저장되는 MongoDB 엔티티. {@code toDomain()} / {@code from()}으로 도메인과 변환함.
+ */
 @Document(collection = "grading_logs")
 @Getter
 @Builder
@@ -26,7 +28,6 @@ public class GradingLogMongoEntity {
     private int totalCount;
     private int correctCount;
     private List<GradingItem> results;
-    private QuizMode quizMode;
     private List<String> topicNames;
 
     public GradingLog toDomain() {
@@ -37,7 +38,6 @@ public class GradingLogMongoEntity {
                 .totalCount(totalCount)
                 .correctCount(correctCount)
                 .results(results)
-                .quizMode(quizMode)
                 .topicNames(topicNames)
                 .build();
     }
@@ -50,7 +50,6 @@ public class GradingLogMongoEntity {
                 .totalCount(gradingLog.getTotalCount())
                 .correctCount(gradingLog.getCorrectCount())
                 .results(gradingLog.getResults())
-                .quizMode(gradingLog.getQuizMode())
                 .topicNames(gradingLog.getTopicNames())
                 .build();
     }
