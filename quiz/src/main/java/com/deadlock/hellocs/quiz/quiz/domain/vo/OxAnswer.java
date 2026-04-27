@@ -1,15 +1,6 @@
 package com.deadlock.hellocs.quiz.quiz.domain.vo;
 
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
-
-@Getter
-@RequiredArgsConstructor
-@EqualsAndHashCode
-public class OxAnswer implements QuizAnswer {
-    private final Boolean value;
-    
+public record OxAnswer(Boolean value) implements QuizAnswer {
     @Override
     public String asString() {
         return String.valueOf(value);
@@ -21,11 +12,11 @@ public class OxAnswer implements QuizAnswer {
         }
         return new OxAnswer(value);
     }
-    
+
     public static OxAnswer ofTrue() {
         return new OxAnswer(true);
     }
-    
+
     public static OxAnswer ofFalse() {
         return new OxAnswer(false);
     }
