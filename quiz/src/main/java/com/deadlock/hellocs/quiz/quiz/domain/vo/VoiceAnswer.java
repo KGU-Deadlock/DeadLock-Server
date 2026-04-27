@@ -1,15 +1,6 @@
 package com.deadlock.hellocs.quiz.quiz.domain.vo;
 
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
-
-@Getter
-@RequiredArgsConstructor
-@EqualsAndHashCode
-public class VoiceAnswer implements QuizAnswer {
-    private final String value;
-    
+public record VoiceAnswer(String value) implements QuizAnswer {
     @Override
     public String asString() {
         return value;
