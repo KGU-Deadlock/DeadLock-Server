@@ -1,6 +1,4 @@
-package com.deadlock.hellocs.quiz.quiz.domain;
-
-import com.deadlock.hellocs.quiz.shared.domain.QuizMode;
+package com.deadlock.hellocs.quiz.shared.domain;
 
 import java.util.List;
 import java.util.Map;

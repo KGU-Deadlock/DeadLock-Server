@@ -4,9 +4,9 @@ import com.deadlock.hellocs.quiz.grading.application.port.out.QueryGradingTarget
 import com.deadlock.hellocs.quiz.grading.application.port.out.QueryTopicOutputPort;
 import com.deadlock.hellocs.quiz.grading.application.port.out.dto.GradingSessionView;
 import com.deadlock.hellocs.quiz.grading.application.port.out.dto.GradingTarget;
-import com.deadlock.hellocs.quiz.quiz.application.port.out.QueryQuizSessionOutputPort;
-import com.deadlock.hellocs.quiz.quiz.domain.QuizSession;
-import com.deadlock.hellocs.quiz.quiz.domain.QuizSessionEntry;
+import com.deadlock.hellocs.quiz.shared.domain.QuizSession;
+import com.deadlock.hellocs.quiz.shared.domain.QuizSessionEntry;
+import com.deadlock.hellocs.quiz.shared.port.out.QueryQuizSessionOutputPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
