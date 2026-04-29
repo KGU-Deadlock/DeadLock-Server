@@ -119,6 +119,12 @@ public class UserService implements CreateUserUseCase, LoadUserUseCase, LoadUser
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<Long> getInterestTopicIds(Long kakaoId) {
+        return loadUserPort.loadUserByKakaoId(kakaoId).getInterestTopicIds();
+    }
+
+    @Override
     public void deleteMyAccount(Long kakaoId) {
         saveUserPort.deleteUserByKakaoId(kakaoId);
     }

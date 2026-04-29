@@ -10,8 +10,6 @@ import com.deadlock.hellocs.quiz.quiz.adapter.out.persistence.entity.QuizShortAn
 import com.deadlock.hellocs.quiz.quiz.adapter.out.persistence.entity.QuizVoiceJpaEntity;
 import com.deadlock.hellocs.quiz.shared.domain.QuizLevel;
 import com.deadlock.hellocs.quiz.shared.domain.QuizType;
-import com.deadlock.hellocs.streak.adapter.out.persistence.UserStreakRepository;
-import com.deadlock.hellocs.streak.adapter.out.persistence.entity.DailyStreakRecordMongoValue;
 import com.deadlock.hellocs.streak.adapter.out.persistence.entity.UserStreakMongoEntity;
 import com.deadlock.hellocs.topic.adapter.out.persistence.TopicRepository;
 import com.deadlock.hellocs.topic.adapter.out.persistence.entity.TopicJpaEntity;
@@ -36,7 +34,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class TestDataService {
-
+/*
     private static final String DEV_SEED_PREFIX = "[DEV-SEED]";
     private static final String GLOBAL_RANKING_KEY = "ranking:global";
     private static final String TOPIC_RANKING_KEY_PREFIX = "ranking:topic:";
@@ -514,4 +512,6 @@ public class TestDataService {
 
     private record SeedTopicsResult(Map<String, TopicJpaEntity> topics, int createdCount) {
     }
+
+ */
 }

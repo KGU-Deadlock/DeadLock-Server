@@ -19,7 +19,7 @@ public class TestDataController {
     private final TestDataService testDataService;
     private final JwtTokenProvider jwtTokenProvider;
     private final LoadUserUseCase loadUserUseCase;
-
+/*
     @PostMapping("/seed")
     public ApiResponse<SeedResult> seed() {
         return ApiResponse.onSuccess(testDataService.seed());
@@ -30,6 +30,7 @@ public class TestDataController {
         Long kakaoId = Long.valueOf(jwt.getSubject());
         return ApiResponse.onSuccess(testDataService.seedMyData(kakaoId));
     }
+*/
 
     @GetMapping("/admin-token")
     public ApiResponse<AdminTokenResponse> getAdminToken() {
