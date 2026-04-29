@@ -25,7 +25,7 @@ public class GradingTargetAdapter implements QueryGradingTargetOutputPort {
 
     @Override
     public GradingSessionView fetchSession(Long userId, List<Long> quizIds) {
-        QuizSession session = queryQuizSessionPort.findByUserId(userId);
+        QuizSession session = queryQuizSessionPort.findByUserIdAndQuizIds(userId, quizIds);
 
         Map<Long, GradingTarget> targets = quizIds.stream()
                 .map(id -> session.quizzes().get(id))

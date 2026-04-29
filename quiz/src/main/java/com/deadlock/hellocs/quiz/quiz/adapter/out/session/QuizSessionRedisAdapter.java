@@ -10,6 +10,10 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
@@ -22,19 +26,24 @@ public class QuizSessionRedisAdapter implements CommandQuizSessionOutputPort, Qu
 
     @Override
     public void save(QuizSession session) {
-        quizSessionRedisTemplate.opsForValue().set(key(session.userId()), session, TTL);
+        List<Long> quizIds = new ArrayList<>(session.quizzes().keySet());
+        quizSessionRedisTemplate.opsForValue().set(key(session.userId(), quizIds), session, TTL);
     }
 
     @Override
-    public QuizSession findByUserId(Long userId) {
-        QuizSession session = quizSessionRedisTemplate.opsForValue().get(key(userId));
+    public QuizSession findByUserIdAndQuizIds(Long userId, List<Long> quizIds) {
+        QuizSession session = quizSessionRedisTemplate.opsForValue().get(key(userId, quizIds));
         if (session == null) {
             throw new CustomException(QuizErrorStatus.QUIZ_SESSION_NOT_FOUND);
         }
         return session;
     }
 
-    private String key(Long userId) {
-        return KEY_PREFIX + userId;
+    private String key(Long userId, List<Long> quizIds) {
+        String ids = quizIds.stream()
+                .sorted()
+                .map(String::valueOf)
+                .collect(Collectors.joining(","));
+        return KEY_PREFIX + userId + ":" + ids;
     }
 }
