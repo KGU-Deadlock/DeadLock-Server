@@ -1,5 +1,6 @@
 package com.deadlock.hellocs.topic.adapter.out.persistence;
 
+import com.deadlock.hellocs.quiz.grading.application.port.out.QueryTopicOutputPort;
 import com.deadlock.hellocs.topic.adapter.out.persistence.entity.TopicJpaEntity;
 import com.deadlock.hellocs.topic.application.port.out.LoadTopicPort;
 import com.deadlock.hellocs.topic.domain.Topic;
@@ -12,7 +13,7 @@ import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
-public class TopicPersistenceAdapter implements LoadTopicPort {
+public class TopicPersistenceAdapter implements LoadTopicPort, QueryTopicOutputPort {
     private final TopicRepository topicRepository;
 
     @Override
@@ -39,6 +40,13 @@ public class TopicPersistenceAdapter implements LoadTopicPort {
     public List<Topic> loadAllTopics() {
         return topicRepository.findAll().stream()
                 .map(TopicJpaEntity::toDomain)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<String> getTopicNames(List<Long> ids) {
+        return topicRepository.findAllById(ids).stream()
+                .map(TopicJpaEntity::getName)
                 .collect(Collectors.toList());
     }
 }

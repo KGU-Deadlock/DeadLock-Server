@@ -87,5 +87,7 @@ logging:
 ai:
   grading:
     evaluate-endpoint: ${AI_GRADING_EVALUATE_ENDPOINT}
+    connect-timeout: ${AI_GRADING_CONNECT_TIMEOUT:2000}
+    read-timeout: ${AI_GRADING_READ_TIMEOUT:10000}
   stt:
     transcribe-endpoint: ${AI_STT_TRANSCRIBE_ENDPOINT}

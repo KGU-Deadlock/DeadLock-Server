@@ -1,0 +1,49 @@
+package com.deadlock.hellocs.quiz.quiz.adapter.out.session;
+
+import com.deadlock.hellocs.global.exception.CustomException;
+import com.deadlock.hellocs.quiz.exception.QuizErrorStatus;
+import com.deadlock.hellocs.quiz.quiz.application.port.out.CommandQuizSessionOutputPort;
+import com.deadlock.hellocs.quiz.shared.domain.QuizSession;
+import com.deadlock.hellocs.quiz.shared.port.out.QueryQuizSessionOutputPort;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.stereotype.Component;
+
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Component
+@RequiredArgsConstructor
+public class QuizSessionRedisAdapter implements CommandQuizSessionOutputPort, QueryQuizSessionOutputPort {
+
+    private static final String KEY_PREFIX = "quiz:session:";
+    private static final Duration TTL = Duration.ofHours(24);
+
+    private final RedisTemplate<String, QuizSession> quizSessionRedisTemplate;
+
+    @Override
+    public void save(QuizSession session) {
+        List<Long> quizIds = new ArrayList<>(session.quizzes().keySet());
+        quizSessionRedisTemplate.opsForValue().set(key(session.userId(), quizIds), session, TTL);
+    }
+
+    @Override
+    public QuizSession findByUserIdAndQuizIds(Long userId, List<Long> quizIds) {
+        QuizSession session = quizSessionRedisTemplate.opsForValue().get(key(userId, quizIds));
+        if (session == null) {
+            throw new CustomException(QuizErrorStatus.QUIZ_SESSION_NOT_FOUND);
+        }
+        return session;
+    }
+
+    private String key(Long userId, List<Long> quizIds) {
+        String ids = quizIds.stream()
+                .sorted()
+                .map(String::valueOf)
+                .collect(Collectors.joining(","));
+        return KEY_PREFIX + userId + ":" + ids;
+    }
+}

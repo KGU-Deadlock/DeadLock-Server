@@ -2,6 +2,8 @@ package com.deadlock.hellocs.user.adapter.out.persistence;
 
 import com.deadlock.hellocs.global.apiPayload.code.status.ErrorStatus;
 import com.deadlock.hellocs.global.exception.CustomException;
+import com.deadlock.hellocs.quiz.quiz.application.port.out.QueryUserOutputPort;
+import com.deadlock.hellocs.quiz.shared.domain.QuizLevel;
 import com.deadlock.hellocs.user.adapter.out.persistence.entity.UserJpaEntity;
 import com.deadlock.hellocs.user.application.port.out.LoadUserPort;
 import com.deadlock.hellocs.user.application.port.out.SaveUserPort;
@@ -13,7 +15,7 @@ import java.util.List;
 
 @Component
 @RequiredArgsConstructor
-public class UserPersistenceAdapter implements LoadUserPort, SaveUserPort {
+public class UserPersistenceAdapter implements LoadUserPort, SaveUserPort, QueryUserOutputPort {
 
     private final UserRepository userRepository;
 
@@ -60,5 +62,12 @@ public class UserPersistenceAdapter implements LoadUserPort, SaveUserPort {
         UserJpaEntity userJpaEntity = userRepository.findTopByKakaoIdOrderByIdDesc(kakaoId)
                 .orElseThrow(() -> new CustomException(ErrorStatus._USER_NOT_FOUND));
         userRepository.delete(userJpaEntity);
+    }
+
+    @Override
+    public QuizLevel getUserLevel(Long kakaoId) {
+        UserJpaEntity userJpaEntity = userRepository.findTopByKakaoIdOrderByIdDesc(kakaoId)
+                .orElseThrow(() -> new CustomException(ErrorStatus._USER_NOT_FOUND));
+        return userJpaEntity.getQuizLevel();
     }
 }
