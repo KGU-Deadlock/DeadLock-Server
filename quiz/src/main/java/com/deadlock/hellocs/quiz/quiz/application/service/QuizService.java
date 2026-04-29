@@ -61,7 +61,7 @@ public class QuizService implements QueryQuizInputPort {
                                 q.getId(),
                                 q.getType(),
                                 q.getContent(),
-                                q.getAnswer().asString(),
+                                q.getAnswerAsString(),
                                 q.getExplain()
                         )
                 ));

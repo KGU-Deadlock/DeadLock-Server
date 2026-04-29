@@ -1,6 +1,5 @@
 package com.deadlock.hellocs.quiz.quiz.domain;
 
-import com.deadlock.hellocs.quiz.quiz.domain.vo.QuizAnswer;
 import com.deadlock.hellocs.quiz.shared.domain.QuizLevel;
 import com.deadlock.hellocs.quiz.shared.domain.QuizType;
 import lombok.AllArgsConstructor;
@@ -35,10 +34,10 @@ public abstract class Quiz {
     private List<Long> topicIds;
     
     /**
-     * 문제의 정답을 반환
-     * 채점은 하지 않고, 정답 정보만 제공
+     * 문제의 정답을 문자열 형태로 반환
+     * 채점은 하지 않고, 세션 저장/전달용 표현만 제공
      */
-    public abstract QuizAnswer getAnswer();
+    public abstract String getAnswerAsString();
     
     /**
      * 문제 내용을 반환

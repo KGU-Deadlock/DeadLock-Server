@@ -1,7 +1,5 @@
 package com.deadlock.hellocs.quiz.quiz.domain;
 
-import com.deadlock.hellocs.quiz.quiz.domain.vo.QuizAnswer;
-import com.deadlock.hellocs.quiz.quiz.domain.vo.VoiceAnswer;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -18,8 +16,8 @@ public class QuizVoice extends Quiz {
     private String contentText;    // 음성을 텍스트로 변환한 내용 (선택적)
     
     @Override
-    public QuizAnswer getAnswer() {
-        return VoiceAnswer.of(answer);
+    public String getAnswerAsString() {
+        return answer;
     }
     
     @Override
