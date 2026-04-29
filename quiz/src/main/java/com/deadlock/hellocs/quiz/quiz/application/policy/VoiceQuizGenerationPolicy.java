@@ -1,9 +1,8 @@
 package com.deadlock.hellocs.quiz.quiz.application.policy;
 
-import com.deadlock.hellocs.quiz.grading.application.port.out.QueryGradingLogOutputPort;
-import com.deadlock.hellocs.quiz.grading.domain.GradingItem;
 import com.deadlock.hellocs.quiz.quiz.application.port.in.dto.GetQuizCommand;
 import com.deadlock.hellocs.quiz.quiz.application.port.out.QueryQuizOutputPort;
+import com.deadlock.hellocs.quiz.quiz.application.port.out.QuerySolvedQuizIdsOutputPort;
 import com.deadlock.hellocs.quiz.quiz.domain.Quiz;
 import com.deadlock.hellocs.quiz.shared.domain.QuizMode;
 import com.deadlock.hellocs.quiz.shared.domain.QuizType;
@@ -30,7 +29,7 @@ public class VoiceQuizGenerationPolicy implements QuizGenerationPolicy {
             QuizType.VOICE, 3
     );
 
-    private final QueryGradingLogOutputPort queryGradingLogPort;
+    private final QuerySolvedQuizIdsOutputPort querySolvedQuizIdsPort;
 
     @Override
     public boolean supports(QuizMode mode) {
@@ -39,10 +38,7 @@ public class VoiceQuizGenerationPolicy implements QuizGenerationPolicy {
 
     @Override
     public List<Quiz> generate(GetQuizCommand command, QueryQuizOutputPort queryQuizPort, Long userId) {
-        Set<Long> solvedQuizIds = queryGradingLogPort.findAllByUserId(userId).stream()
-                .flatMap(log -> log.getResults().stream())
-                .map(GradingItem::quizId)
-                .collect(Collectors.toSet());
+        Set<Long> solvedQuizIds = querySolvedQuizIdsPort.findByUserId(userId);
 
         List<Quiz> quizzes = new ArrayList<>();
 
