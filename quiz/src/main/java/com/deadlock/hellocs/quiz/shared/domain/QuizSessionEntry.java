@@ -1,6 +1,4 @@
-package com.deadlock.hellocs.quiz.quiz.domain;
-
-import com.deadlock.hellocs.quiz.shared.domain.QuizType;
+package com.deadlock.hellocs.quiz.shared.domain;
 
 public record QuizSessionEntry(
         Long quizId,

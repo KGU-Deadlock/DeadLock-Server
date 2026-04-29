@@ -1,6 +1,6 @@
 package com.deadlock.hellocs.quiz.quiz.adapter.out.session;
 
-import com.deadlock.hellocs.quiz.quiz.domain.QuizSession;
+import com.deadlock.hellocs.quiz.shared.domain.QuizSession;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;

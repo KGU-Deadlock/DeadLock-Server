@@ -1,6 +1,6 @@
-package com.deadlock.hellocs.quiz.quiz.application.port.out;
+package com.deadlock.hellocs.quiz.shared.port.out;
 
-import com.deadlock.hellocs.quiz.quiz.domain.QuizSession;
+import com.deadlock.hellocs.quiz.shared.domain.QuizSession;
 
 import java.util.List;
 
