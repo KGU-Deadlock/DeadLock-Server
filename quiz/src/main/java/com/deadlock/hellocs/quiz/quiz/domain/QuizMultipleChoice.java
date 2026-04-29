@@ -1,7 +1,5 @@
 package com.deadlock.hellocs.quiz.quiz.domain;
 
-import com.deadlock.hellocs.quiz.quiz.domain.vo.MultipleChoiceAnswer;
-import com.deadlock.hellocs.quiz.quiz.domain.vo.QuizAnswer;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -23,8 +21,8 @@ public class QuizMultipleChoice extends Quiz {
     private List<String> choice;
     
     @Override
-    public QuizAnswer getAnswer() {
-        return MultipleChoiceAnswer.of(answer);
+    public String getAnswerAsString() {
+        return String.valueOf(answer);
     }
 
     public static List<String> splitChoices(String rawChoice) {

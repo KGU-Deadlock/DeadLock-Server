@@ -1,7 +1,5 @@
 package com.deadlock.hellocs.quiz.quiz.domain;
 
-import com.deadlock.hellocs.quiz.quiz.domain.vo.OxAnswer;
-import com.deadlock.hellocs.quiz.quiz.domain.vo.QuizAnswer;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -17,8 +15,8 @@ public class QuizOx extends Quiz {
     private String explain;
     
     @Override
-    public QuizAnswer getAnswer() {
-        return OxAnswer.of(answer);
+    public String getAnswerAsString() {
+        return String.valueOf(answer);
     }
     
     @Override
