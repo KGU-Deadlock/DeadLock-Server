@@ -14,8 +14,8 @@ public record GradingLogListResult(
         List<String> topicNames
 ) {
     public static GradingLogListResult from(GradingLog gradingLog) {
-        String mode = gradingLog.getQuizMode() != null
-                ? gradingLog.getQuizMode().name()
+        String mode = gradingLog.getMode() != null
+                ? gradingLog.getMode().name()
                 : null;
 
         List<String> topics = gradingLog.getTopicNames() != null

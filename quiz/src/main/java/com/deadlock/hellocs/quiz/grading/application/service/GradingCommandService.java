@@ -48,7 +48,7 @@ public class GradingCommandService implements CommandAnswerInputPort {
 
         List<GradingItem> gradingItems = gradeAnswers(answers, session.targets());
 
-        GradingLog gradingLog = GradingLog.create(command.userId(), gradingItems, session.topicNames());
+        GradingLog gradingLog = GradingLog.create(command.userId(), session.mode(), gradingItems, session.topicNames());
         GradingLog savedGradingLog = commandGradingLogPort.save(gradingLog);
 
         applicationEventPublisher.publishEvent(new GradingCompletedEvent(

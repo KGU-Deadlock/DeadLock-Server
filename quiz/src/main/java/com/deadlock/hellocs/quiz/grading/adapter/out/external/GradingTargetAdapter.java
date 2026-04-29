@@ -35,7 +35,7 @@ public class GradingTargetAdapter implements QueryGradingTargetOutputPort {
 
         List<String> topicNames = queryTopicPort.getTopicNames(session.topicIds());
 
-        return new GradingSessionView(session.topicIds(), topicNames, targets);
+        return new GradingSessionView(session.mode(), session.topicIds(), topicNames, targets);
     }
 
     private GradingTarget toGradingTarget(QuizSessionEntry entry) {
