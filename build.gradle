@@ -68,6 +68,7 @@ dependencies {
 	testImplementation 'com.h2database:h2'
 	implementation project(':ranking-streak')
 	implementation project(':quiz')
+	implementation project(':interview')
 }
 dependencyManagement {
     imports {
