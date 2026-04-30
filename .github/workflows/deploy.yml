@@ -33,6 +33,7 @@ jobs:
             echo "MONGO_INITDB_ROOT_USERNAME=${{ secrets.MONGO_INITDB_ROOT_USERNAME }}"
             echo "MONGO_INITDB_ROOT_PASSWORD=${{ secrets.MONGO_INITDB_ROOT_PASSWORD }}"
             echo "MONGO_URI=${{ secrets.MONGO_URI }}"
+            echo "KAKAO_APP_ID=${{ secrets.KAKAO_APP_ID }}"
             echo "KAKAO_CLIENT_ID=${{ secrets.KAKAO_CLIENT_ID }}"
             echo "KAKAO_CLIENT_SECRET=${{ secrets.KAKAO_CLIENT_SECRET }}"
             echo "KAKAO_REDIRECT_URI=${{ secrets.KAKAO_REDIRECT_URI }}"
@@ -41,8 +42,10 @@ jobs:
             echo "JWT_REFRESH_TOKEN_EXPIRATION=${{ secrets.JWT_REFRESH_TOKEN_EXPIRATION }}"
             echo "AI_GRADING_EVALUATE_ENDPOINT=${{ secrets.AI_GRADING_EVALUATE_ENDPOINT }}"
             echo "AI_STT_TRANSCRIBE_ENDPOINT=${{ secrets.AI_STT_TRANSCRIBE_ENDPOINT }}"
+            echo "AI_INTERVIEW_FEEDBACK_ENDPOINT=${{ secrets.AI_INTERVIEW_FEEDBACK_ENDPOINT }}"
             echo "GRAFANA_ADMIN_USER=${{ secrets.GRAFANA_ADMIN_USER }}"
             echo "GRAFANA_ADMIN_PASSWORD=${{ secrets.GRAFANA_ADMIN_PASSWORD }}"
+            
           } > .env
 
       - name: Build image
