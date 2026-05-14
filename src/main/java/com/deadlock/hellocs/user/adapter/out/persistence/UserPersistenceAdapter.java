@@ -10,6 +10,7 @@ import com.deadlock.hellocs.user.application.port.out.SaveUserPort;
 import com.deadlock.hellocs.user.domain.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -20,6 +21,7 @@ public class UserPersistenceAdapter implements LoadUserPort, SaveUserPort, Query
     private final UserRepository userRepository;
 
     @Override
+    @Transactional(readOnly = true)
     public User loadUserByKakaoId(Long kakaoId) {
         UserJpaEntity userJpaEntity = userRepository.findTopByKakaoIdOrderByIdDesc(kakaoId)
                 .orElseThrow(() -> new CustomException(ErrorStatus._USER_NOT_FOUND));
@@ -35,6 +37,7 @@ public class UserPersistenceAdapter implements LoadUserPort, SaveUserPort, Query
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<User> loadUsersByKakaoIds(List<Long> kakaoIds) {
         return userRepository.findByKakaoIdIn(kakaoIds).stream()
                 .map(UserJpaEntity::toDomain)
