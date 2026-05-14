@@ -9,6 +9,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -32,6 +33,14 @@ public class TestDataController {
     }
 */
 
+    @PostMapping("/seed/stats")
+    public ApiResponse<TestDataService.SeedStatsResult> seedStats(
+            @RequestParam(name = "userCount", defaultValue = "10") int userCount,
+            @RequestParam(name = "days", defaultValue = "14") int days
+    ) {
+        return ApiResponse.onSuccess(testDataService.seedStats(userCount, days));
+    }
+
     @GetMapping("/admin-token")
     public ApiResponse<AdminTokenResponse> getAdminToken() {
         Long kakaoId = 1L;
@@ -44,5 +53,18 @@ public class TestDataController {
         return ApiResponse.onSuccess(new AdminTokenResponse(accessToken, refreshToken, isUser));
     }
 
+    @GetMapping("/user-token")
+    public ApiResponse<UserTokenResponse> getUserToken(@RequestParam(name = "kakaoId") Long kakaoId) {
+        String kakaoIdStr = String.valueOf(kakaoId);
+
+        String accessToken = jwtTokenProvider.createAccessToken(kakaoIdStr, "USER");
+        String refreshToken = jwtTokenProvider.createRefreshToken(kakaoIdStr);
+        boolean isUser = loadUserUseCase.isExist(kakaoId);
+
+        return ApiResponse.onSuccess(new UserTokenResponse(accessToken, refreshToken, isUser));
+    }
+
     private record AdminTokenResponse(String accessToken, String refreshToken, boolean isUser) {}
+
+    private record UserTokenResponse(String accessToken, String refreshToken, boolean isUser) {}
 }

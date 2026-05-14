@@ -16,12 +16,15 @@ import com.deadlock.hellocs.topic.adapter.out.persistence.entity.TopicJpaEntity;
 import com.deadlock.hellocs.user.adapter.out.persistence.UserRepository;
 import com.deadlock.hellocs.user.adapter.out.persistence.entity.UserJpaEntity;
 import com.deadlock.hellocs.user.domain.User;
+import com.deadlock.hellocs.quiz.grading.application.event.GradingCompletedEvent;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -29,11 +32,95 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Random;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class TestDataService {
+
+    private final UserRepository userRepository;
+    private final TopicRepository topicRepository;
+    private final ApplicationEventPublisher applicationEventPublisher;
+
+    /**
+     * 개발용: userId 1~userCount 를 kakaoId 로 가진 유저를 만들고,
+     * 과거 days 일치의 풀이 이벤트를 발행해 ranking/streak 데이터까지 한 번에 채움.
+     * 실제 채점 흐름(GradingCompletedEvent → ranking/streak 리스너)을 그대로 타므로
+     * Redis/Mongo 에 직접 쓰지 않고 일관성이 유지됨.
+     */
+    @Transactional
+    public SeedStatsResult seedStats(int userCount, int days) {
+        List<Long> topicIds = topicRepository.findAll().stream()
+                .sorted(Comparator.comparing(TopicJpaEntity::getId))
+                .map(TopicJpaEntity::getId)
+                .toList();
+
+        QuizLevel[] levels = QuizLevel.values();
+        List<Long> kakaoIds = new ArrayList<>();
+        int usersCreated = 0;
+
+        for (int i = 1; i <= userCount; i++) {
+            long kakaoId = 1000L + i;
+            kakaoIds.add(kakaoId);
+            if (userRepository.existsByKakaoId(kakaoId)) continue;
+
+            String nickname = String.format("devuser%02d", i);
+            List<Long> interests = topicIds.isEmpty()
+                    ? List.of()
+                    : List.of(
+                            topicIds.get((i - 1) % topicIds.size()),
+                            topicIds.get(i % topicIds.size())
+                    );
+
+            User user = User.createUser(
+                    kakaoId,
+                    nickname + "@example.com",
+                    nickname,
+                    "https://picsum.photos/seed/" + nickname + "/200/200",
+                    levels[(i - 1) % levels.length],
+                    interests
+            );
+            userRepository.save(UserJpaEntity.from(user));
+            usersCreated++;
+        }
+
+        LocalDate today = LocalDate.now();
+        Random random = new Random(42L);
+        int eventsPublished = 0;
+
+        for (int idx = 0; idx < kakaoIds.size(); idx++) {
+            Long kakaoId = kakaoIds.get(idx);
+            int baseScore = 60 + (userCount - idx) * 8;
+
+            for (int d = days - 1; d >= 0; d--) {
+                if ((d + idx) % 5 == 0) continue; // 일부 날짜 skip → streak 끊김 표현
+
+                LocalDate date = today.minusDays(d);
+                LocalDateTime solvedAt = date.atTime(10 + random.nextInt(10), random.nextInt(60));
+                int quizCount = 3 + random.nextInt(3);
+                int score = baseScore + random.nextInt(20);
+
+                List<Long> sessionTopicIds = topicIds.isEmpty()
+                        ? List.of()
+                        : List.of(topicIds.get((idx + d) % topicIds.size()));
+
+                String gradingLogId = "dev-seed-" + kakaoId + "-" + date + "-"
+                        + UUID.randomUUID().toString().substring(0, 8);
+
+                applicationEventPublisher.publishEvent(new GradingCompletedEvent(
+                        gradingLogId, kakaoId, solvedAt, quizCount, score, sessionTopicIds
+                ));
+                eventsPublished++;
+            }
+        }
+
+        return new SeedStatsResult(usersCreated, eventsPublished, days);
+    }
+
+    public record SeedStatsResult(int usersCreated, int gradingEventsPublished, int daysSimulated) {}
+
 /*
     private static final String DEV_SEED_PREFIX = "[DEV-SEED]";
     private static final String GLOBAL_RANKING_KEY = "ranking:global";
