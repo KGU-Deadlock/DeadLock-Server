@@ -36,8 +36,8 @@ public class StreakController implements StreakControllerDocs {
     @Override
     public ApiResponse<StreakMonthlyResult> getMonthly(
             @AuthenticationPrincipal Jwt jwt,
-            @RequestParam @Min(2000) int year,
-            @RequestParam @Min(1) @Max(12) int month
+            @RequestParam("year") @Min(2000) int year,
+            @RequestParam("month") @Min(1) @Max(12) int month
     ) {
         Long userId = Long.valueOf(jwt.getSubject());
         return ApiResponse.onSuccess(queryStreakUseCase.getMonthly(userId, year, month));
