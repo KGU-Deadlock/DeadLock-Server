@@ -77,8 +77,8 @@ class RankingControllerSpecTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.isSuccess").value(true))
                     .andExpect(jsonPath("$.code").value("COMMON2000"))
-                    .andExpect(jsonPath("$.data.top5").isArray())
-                    .andExpect(jsonPath("$.data.recentRelatedDiscussionCount").value(0));
+                    .andExpect(jsonPath("$.data.topEntries").isArray())
+                    .andExpect(jsonPath("$.data.totalCount").value(0));
 
             then(queryRankingInputPort).should().getSummary();
         }
@@ -124,8 +124,8 @@ class RankingControllerSpecTest {
                     .andExpect(jsonPath("$.code").value("COMMON2000"))
                     .andExpect(jsonPath("$.data.filterType").value("ALL"))
                     .andExpect(jsonPath("$.data.rankings").isArray())
-                    .andExpect(jsonPath("$.data.myRanking").isNotEmpty())
-                    .andExpect(jsonPath("$.data.belowMyRankings").isArray());
+                    .andExpect(jsonPath("$.data.myRank").isNotEmpty())
+                    .andExpect(jsonPath("$.data.nearbyRankings").isArray());
 
             then(queryRankingInputPort).should().getRanking(12345L, "ALL", 10);
         }

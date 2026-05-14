@@ -3,7 +3,7 @@ package com.deadlock.hellocs.ranking.application.port.in.dto;
 import java.util.List;
 
 public record MyRankingResult(
-        Long kakaoId,
+        Long userId,
         String nickname,
         String profileImage,
         List<String> interests,

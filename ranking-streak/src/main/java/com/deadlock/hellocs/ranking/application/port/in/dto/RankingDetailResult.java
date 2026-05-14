@@ -5,7 +5,7 @@ import java.util.List;
 public record RankingDetailResult(
         String filterType,
         List<RankingEntryResult> rankings,
-        MyRankingResult myRanking,
-        List<RankingEntryResult> belowMyRankings,
+        MyRankingResult myRank,
+        List<RankingEntryResult> nearbyRankings,
         int recentRelatedDiscussionCount
 ) {}

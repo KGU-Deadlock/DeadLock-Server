@@ -4,7 +4,7 @@ import java.util.List;
 
 public record RankingEntryResult(
         long rank,
-        Long kakaoId,
+        Long userId,
         String nickname,
         String profileImage,
         List<String> interests,

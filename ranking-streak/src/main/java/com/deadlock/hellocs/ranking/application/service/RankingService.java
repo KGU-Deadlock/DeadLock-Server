@@ -44,7 +44,7 @@ public class RankingService implements UpdateRankingUseCase, QueryRankingUseCase
     @Override
     public RankingSummaryResult getSummary(int size) {
         List<Ranking> top = loadRankingPort.loadByRankRange(RankingKey.total(), FIRST_RANK, size);
-        return new RankingSummaryResult(enrichEntries(top), 0);
+        return new RankingSummaryResult(enrichEntries(top), loadRankingPort.countTotal());
     }
 
     @Override
