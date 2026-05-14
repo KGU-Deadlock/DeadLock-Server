@@ -85,9 +85,9 @@ public class UserStreak {
     /** today 기준으로 스트릭이 아직 유효한지 확인 후 현재 스트릭 일수를 반환함. */
     public int getCurrentStreakDays(LocalDate today) {
         if (isContinuedStreak(today)){
-            return 0;
+            return currentStreak;
         }
-        return currentStreak;
+        return 0;
     }
 
     /** 풀이한 주제 수를 반환함. solvedTopicIds가 null이면 0을 반환함. */
