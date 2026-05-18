@@ -76,15 +76,7 @@ public class UserService implements CreateUserUseCase, LoadUserUseCase, LoadUser
     @Override
     @Transactional(readOnly = true)
     public boolean isExist(Long kakaoId) {
-        try {
-            loadUserPort.loadUserByKakaoId(kakaoId);
-            return true;
-        } catch (CustomException e) {
-            if (e.getErrorCode() == ErrorStatus._USER_NOT_FOUND) {
-                return false;
-            }
-            throw e;
-        }
+        return loadUserPort.existsByKakaoId(kakaoId);
     }
 
     @Override
