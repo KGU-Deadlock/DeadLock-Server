@@ -1,4 +1,4 @@
-name: Deploy to GCP VM (Docker Compose)
+name: Deploy to Pi (Docker Compose)
 
 on:
   push:
@@ -13,52 +13,27 @@ concurrency:
 
 jobs:
   deploy:
-    runs-on: [self-hosted, dev-deadlock]
+    runs-on: [self-hosted, pi-ops]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Prepare .env
-        shell: bash
-        run: |
-          {
-            echo "GRAFANA_ROOT_URL=${{ secrets.GRAFANA_ROOT_URL }}"
-            echo "JAVA_OPTS=${{ secrets.JAVA_OPTS }}"
-            echo "POSTGRES_DB=${{ secrets.POSTGRES_DB }}"
-            echo "POSTGRES_USER=${{ secrets.POSTGRES_USER }}"
-            echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}"
-            echo "REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}"
-            echo "REDIS_TIMEOUT=${{ secrets.REDIS_TIMEOUT }}"
-            echo "MONGO_DB=${{ secrets.MONGO_DB }}"
-            echo "MONGO_INITDB_ROOT_USERNAME=${{ secrets.MONGO_INITDB_ROOT_USERNAME }}"
-            echo "MONGO_INITDB_ROOT_PASSWORD=${{ secrets.MONGO_INITDB_ROOT_PASSWORD }}"
-            echo "MONGO_URI=${{ secrets.MONGO_URI }}"
-            echo "KAKAO_APP_ID=${{ secrets.KAKAO_APP_ID }}"
-            echo "KAKAO_CLIENT_ID=${{ secrets.KAKAO_CLIENT_ID }}"
-            echo "KAKAO_CLIENT_SECRET=${{ secrets.KAKAO_CLIENT_SECRET }}"
-            echo "KAKAO_REDIRECT_URI=${{ secrets.KAKAO_REDIRECT_URI }}"
-            echo "JWT_SECRET=${{ secrets.JWT_SECRET }}"
-            echo "JWT_ACCESS_TOKEN_EXPIRATION=${{ secrets.JWT_ACCESS_TOKEN_EXPIRATION }}"
-            echo "JWT_REFRESH_TOKEN_EXPIRATION=${{ secrets.JWT_REFRESH_TOKEN_EXPIRATION }}"
-            echo "AI_GRADING_EVALUATE_ENDPOINT=${{ secrets.AI_GRADING_EVALUATE_ENDPOINT }}"
-            echo "AI_STT_TRANSCRIBE_ENDPOINT=${{ secrets.AI_STT_TRANSCRIBE_ENDPOINT }}"
-            echo "AI_INTERVIEW_FEEDBACK_ENDPOINT=${{ secrets.AI_INTERVIEW_FEEDBACK_ENDPOINT }}"
-            echo "GRAFANA_ADMIN_USER=${{ secrets.GRAFANA_ADMIN_USER }}"
-            echo "GRAFANA_ADMIN_PASSWORD=${{ secrets.GRAFANA_ADMIN_PASSWORD }}"
-            
-          } > .env
-
-      - name: Build image
+      - name: Build image on bastion
         shell: bash
         run: |
           docker build -t deadlock-server:latest .
 
-      - name: Deploy
+      - name: Transfer image to backend
         shell: bash
         run: |
-          set -euo pipefail
-          docker compose up -d
-          docker compose ps
+          docker save deadlock-server:latest | gzip | \
+            ssh -o StrictHostKeyChecking=no ubuntu@192.168.123.102 \
+            "gunzip | docker load"
+
+      - name: Deploy on backend
+        shell: bash
+        run: |
+          ssh ubuntu@192.168.123.102 "cd ~/DeadLock-Server && docker compose up -d --no-build"
 
       - name: Notify Discord (success)
         if: success()
@@ -75,4 +50,3 @@ jobs:
           curl -fsS -H 'Content-Type: application/json' \
             -d "{\"content\":\"❌ [Backend] Deploy failed: \`${{ github.repository }}@${{ github.sha }}\`\\nActions: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
             "${{ secrets.DISCORD_WEBHOOK_URL }}"
-            
