@@ -1,6 +1,8 @@
 package com.deadlock.hellocs.global.config;
 
 import com.deadlock.hellocs.global.apiPayload.code.status.ErrorStatus;
+import com.deadlock.hellocs.global.auth.handler.OAuth2LoginSuccessHandler;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -23,6 +25,7 @@ import java.util.List;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
 
     private static final String[] SWAGGER_WHITELIST = {
@@ -34,6 +37,8 @@ public class SecurityConfig {
             "/swagger-resources/**",
             "/webjars/**"
     };
+
+    private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -67,6 +72,18 @@ public class SecurityConfig {
                 .logout(AbstractHttpConfigurer::disable)
                 .requestCache(RequestCacheConfigurer::disable)
                 .sessionManagement(SessionManagementConfigurer::disable);
+    }
+
+    @Bean
+    Customizer<HttpSecurity> oauth2Customizer() {
+        return http -> http
+                .oauth2Login(oauth2 -> oauth2
+                        .authorizationEndpoint(auth -> auth
+                                .baseUri("/v1/auth/oauth2"))
+                        .redirectionEndpoint(redirection -> redirection
+                                .baseUri("/v1/auth/token"))
+                        .successHandler(oAuth2LoginSuccessHandler)
+                );
     }
 
     @Bean
