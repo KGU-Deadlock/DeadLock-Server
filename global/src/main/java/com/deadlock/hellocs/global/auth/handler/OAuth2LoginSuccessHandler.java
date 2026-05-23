@@ -3,7 +3,7 @@ package com.deadlock.hellocs.global.auth.handler;
 import com.deadlock.hellocs.global.auth.controller.AuthController;
 import com.deadlock.hellocs.global.auth.controller.AuthController.UserData;
 import com.deadlock.hellocs.global.auth.jwt.JwtTokenProvider;
-import com.deadlock.hellocs.user.application.port.in.LoadUserUseCase;
+import com.deadlock.hellocs.global.auth.port.UserAuthPort;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +25,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final ObjectMapper objectMapper;
-    private final LoadUserUseCase loadUserUseCase;
+    private final UserAuthPort userAuthPort;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request,
@@ -35,8 +35,8 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         String kakaoIdStr = oAuth2User.getName();
         Long kakaoId = Long.valueOf(kakaoIdStr);
 
-        boolean isUser = loadUserUseCase.isExist(kakaoId);
-        String role = isUser ? loadUserUseCase.getUserRole(kakaoId).name() : null;
+        boolean isUser = userAuthPort.isExist(kakaoId);
+        String role = isUser ? userAuthPort.getUserRoleName(kakaoId) : null;
 
         String accessToken = jwtTokenProvider.createAccessToken(kakaoIdStr, role);
         String refreshToken = jwtTokenProvider.createRefreshToken(kakaoIdStr);
