@@ -1,5 +1,5 @@
 server:
-  port: ${SERVER_PORT}
+  port: ${SERVER_PORT:8080}
   shutdown: graceful
   forward-headers-strategy: framework
   servlet:
@@ -10,12 +10,10 @@ server:
 spring:
   application:
     name: hellocs
-  profiles:
-    active: ${SPRING_PROFILES_ACTIVE}
   datasource:
-    url: jdbc:postgresql://${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
-    username: ${POSTGRES_USER}
-    password: ${POSTGRES_PASSWORD}
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:hellocs}
+    username: ${POSTGRES_USER:postgres}
+    password: ${POSTGRES_PASSWORD:0901}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 20
@@ -24,12 +22,12 @@ spring:
       max-lifetime: 1800000
   data:
     redis:
-      host: ${REDIS_HOST}
-      port: ${REDIS_PORT}
-      password: ${REDIS_PASSWORD}
-      timeout: ${REDIS_TIMEOUT}
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: ${REDIS_TIMEOUT:3s}
   mongodb:
-    uri: ${MONGO_URI}
+    uri: ${MONGO_URI:mongodb://localhost:27017/hellocs}
   jpa:
     hibernate:
       ddl-auto: update
@@ -55,44 +53,17 @@ spring:
             token-uri: https://kauth.kakao.com/oauth/token
             user-info-uri: https://kapi.kakao.com/v2/user/me
             user-name-attribute: id
+kakao:
+  client-id: ${KAKAO_CLIENT_ID}
+  client-secret: ${KAKAO_CLIENT_SECRET}
+  front-redirect-uri: ${KAKAO_FRONT_REDIRECT_URI:http://localhost:5173/oauth/kakao}
 jwt:
   secret: ${JWT_SECRET}
-  access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION}
-  refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION}
-management:
-  server:
-    port: ${MANAGEMENT_PORT}
-    address: 0.0.0.0
-  endpoints:
-    access:
-      default: none
-    web:
-      base-path: /actuator
-      exposure:
-        include: health,info,prometheus
-  endpoint:
-    health:
-      access: unrestricted
-      probes:
-        enabled: true
-      show-details: never
-    info:
-      access: unrestricted
-    prometheus:
-      access: unrestricted
-  metrics:
-    tags:
-      application: hellocs
-  prometheus:
-    metrics:
-      export:
-        enabled: true
+  access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:3600000}
+  refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION:604800000}
 logging:
   level:
     root: INFO
-    org.springframework.security: DEBUG
-    org.springframework.security.oauth2: TRACE
-    org.springframework.web: DEBUG
 ai:
   grading:
     evaluate-endpoint: ${AI_GRADING_EVALUATE_ENDPOINT}
