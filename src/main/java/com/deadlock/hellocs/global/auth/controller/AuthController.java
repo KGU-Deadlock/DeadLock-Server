@@ -4,7 +4,10 @@ import com.deadlock.hellocs.global.apiPayload.ApiResponse;
 import com.deadlock.hellocs.global.auth.controller.docs.AuthControllerDocs;
 import com.deadlock.hellocs.global.auth.jwt.JwtTokenProvider;
 import com.deadlock.hellocs.global.auth.service.AuthService;
+import com.deadlock.hellocs.global.auth.service.KakaoCodeAuthService;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
@@ -20,6 +23,7 @@ public class AuthController implements AuthControllerDocs {
 
     private final AuthService authService;
     private final JwtTokenProvider jwtTokenProvider;
+    private final KakaoCodeAuthService kakaoCodeAuthService;
 
     @GetMapping("/oauth2/kakao")
     public void kakaoLogin(HttpServletResponse response) throws IOException {
@@ -48,6 +52,15 @@ public class AuthController implements AuthControllerDocs {
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
 
+    @PostMapping("/kakao/code")
+    public ApiResponse<AuthTokenResponse> loginWithKakaoCode(
+            @RequestBody @Valid KakaoCodeRequest request,
+            HttpServletResponse response) {
+        KakaoCodeAuthService.LoginResult result = kakaoCodeAuthService.loginWithCode(request.code());
+        addRefreshTokenCookie(response, result.refreshToken());
+        return ApiResponse.onSuccess(new AuthTokenResponse(result.accessToken(), result.isUser(), result.userData()));
+    }
+
     @GetMapping("/token")
     public void kakaoCallback(@RequestParam String code, @RequestParam String state) {
         // Spring Security OAuth2가 실제로 처리하므로 이 메서드는 호출되지 않습니다.
@@ -57,4 +70,6 @@ public class AuthController implements AuthControllerDocs {
     public record AuthTokenResponse(String accessToken, boolean isUser, UserData userData) {}
 
     public record UserData(String nickname) {}
+
+    public record KakaoCodeRequest(@NotBlank String code) {}
 }
