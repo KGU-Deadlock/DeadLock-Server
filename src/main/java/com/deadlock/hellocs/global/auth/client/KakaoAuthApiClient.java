@@ -2,6 +2,8 @@ package com.deadlock.hellocs.global.auth.client;
 
 import com.deadlock.hellocs.global.apiPayload.code.status.ErrorStatus;
 import com.deadlock.hellocs.global.exception.CustomException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -14,6 +16,8 @@ import java.util.Map;
 
 @Component
 public class KakaoAuthApiClient {
+
+    private static final Logger log = LoggerFactory.getLogger(KakaoAuthApiClient.class);
 
     private static final String TOKEN_URL = "https://kauth.kakao.com/oauth/token";
     private static final String USER_INFO_URL = "https://kapi.kakao.com/v2/user/me";
@@ -42,6 +46,7 @@ public class KakaoAuthApiClient {
         params.add("redirect_uri", frontRedirectUri);
         params.add("code", code);
 
+        log.info("[Kakao] token exchange: redirect_uri={}", frontRedirectUri);
         try {
             Map<?, ?> response = restClient.post()
                     .uri(TOKEN_URL)
@@ -51,10 +56,12 @@ public class KakaoAuthApiClient {
                     .body(Map.class);
 
             if (response == null || !response.containsKey("access_token")) {
+                log.error("[Kakao] token exchange failed: response={}", response);
                 throw new CustomException(ErrorStatus._INVALID_KAKAO_CODE);
             }
             return (String) response.get("access_token");
         } catch (RestClientException e) {
+            log.error("[Kakao] token exchange error: {}", e.getMessage());
             throw new CustomException(ErrorStatus._INVALID_KAKAO_CODE);
         }
     }
