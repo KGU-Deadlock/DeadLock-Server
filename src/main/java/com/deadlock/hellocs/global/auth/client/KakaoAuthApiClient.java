@@ -46,7 +46,8 @@ public class KakaoAuthApiClient {
         params.add("redirect_uri", frontRedirectUri);
         params.add("code", code);
 
-        log.info("[Kakao] token exchange: redirect_uri={}", frontRedirectUri);
+        String codePrefix = code.substring(0, Math.min(code.length(), 10));
+        log.info("[Kakao] token exchange start: redirect_uri={}, code_prefix={}", frontRedirectUri, codePrefix);
         try {
             Map<?, ?> response = restClient.post()
                     .uri(TOKEN_URL)
@@ -56,12 +57,14 @@ public class KakaoAuthApiClient {
                     .body(Map.class);
 
             if (response == null || !response.containsKey("access_token")) {
-                log.error("[Kakao] token exchange failed: response={}", response);
+                log.error("[Kakao] token exchange failed: code_prefix={}, response={}", codePrefix, response);
                 throw new CustomException(ErrorStatus._INVALID_KAKAO_CODE);
             }
+            log.info("[Kakao] token exchange success: code_prefix={}, token_type={}, expires_in={}, scope={}",
+                    codePrefix, response.get("token_type"), response.get("expires_in"), response.get("scope"));
             return (String) response.get("access_token");
         } catch (RestClientException e) {
-            log.error("[Kakao] token exchange error: {}", e.getMessage());
+            log.error("[Kakao] token exchange error: code_prefix={}, error={}", codePrefix, e.getMessage());
             throw new CustomException(ErrorStatus._INVALID_KAKAO_CODE);
         }
     }
@@ -86,6 +89,7 @@ public class KakaoAuthApiClient {
 
             return new KakaoUserInfo(kakaoId, nickname);
         } catch (RestClientException e) {
+            log.error("[Kakao] getUserInfo error: {}", e.getMessage());
             throw new CustomException(ErrorStatus._INVALID_KAKAO_CODE);
         }
     }

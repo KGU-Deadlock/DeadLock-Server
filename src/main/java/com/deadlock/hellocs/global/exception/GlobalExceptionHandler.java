@@ -10,6 +10,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestCookieException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -23,6 +24,14 @@ public class GlobalExceptionHandler {
     return ResponseEntity
         .status(ErrorStatus._BAD_REQUEST.getReasonHttpStatus().getHttpStatus())
         .body(ApiResponse.onFailure(ErrorStatus._BAD_REQUEST, null));
+  }
+
+  @ExceptionHandler(MissingRequestCookieException.class)
+  public ResponseEntity<ApiResponse<Object>> handleMissingCookieException(MissingRequestCookieException e) {
+    log.warn("Missing cookie: {}", e.getCookieName());
+    return ResponseEntity
+        .status(ErrorStatus._UNAUTHORIZED.getReasonHttpStatus().getHttpStatus())
+        .body(ApiResponse.onFailure(ErrorStatus._UNAUTHORIZED, null));
   }
 
   @ExceptionHandler(CustomException.class)
