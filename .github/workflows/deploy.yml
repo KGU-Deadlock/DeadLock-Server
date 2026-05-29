@@ -1,4 +1,4 @@
-name: Deploy to Backend (Docker Compose)
+name: Deploy to Pi (Docker Compose)
 
 on:
   push:
@@ -11,24 +11,12 @@ concurrency:
   group: deploy-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  BACKEND_HOST: ${{ secrets.BACKEND_HOST }}
-  DEPLOY_DIR: ${{ secrets.DEPLOY_DIR }}
-
 jobs:
   deploy:
-    runs-on: [self-hosted, dev-deadlock]
+    runs-on: [self-hosted, pi-ops]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Build image
-        shell: bash
-        run: docker build -t deadlock-server:latest .
-
-      - name: Transfer image to backend
-        shell: bash
-        run: docker save deadlock-server:latest | ssh -o StrictHostKeyChecking=no $BACKEND_HOST docker load
 
       - name: Prepare .env
         shell: bash
@@ -61,13 +49,24 @@ jobs:
             echo "GRAFANA_ADMIN_PASSWORD=${{ secrets.GRAFANA_ADMIN_PASSWORD }}"
           } > .env
 
-      - name: Deploy to backend
+      - name: Build image on bastion
+        shell: bash
+        run: docker build -t deadlock-server:latest .
+
+      - name: Transfer image to backend
         shell: bash
         run: |
-          set -euo pipefail
-          ssh -o StrictHostKeyChecking=no $BACKEND_HOST "mkdir -p $DEPLOY_DIR"
-          scp -o StrictHostKeyChecking=no docker-compose.yml .env $BACKEND_HOST:$DEPLOY_DIR/
-          ssh -o StrictHostKeyChecking=no $BACKEND_HOST "cd $DEPLOY_DIR && docker compose up -d && docker compose ps"
+          docker save deadlock-server:latest | gzip | \
+            ssh -o StrictHostKeyChecking=no ${{ secrets.BACKEND_HOST }} \
+            "gunzip | docker load"
+
+      - name: Deploy on backend
+        shell: bash
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.BACKEND_HOST }} "mkdir -p ${{ secrets.DEPLOY_DIR }}"
+          scp -o StrictHostKeyChecking=no docker-compose.yml .env ${{ secrets.BACKEND_HOST }}:${{ secrets.DEPLOY_DIR }}/
+          ssh -o StrictHostKeyChecking=no ${{ secrets.BACKEND_HOST }} \
+            "cd ${{ secrets.DEPLOY_DIR }} && docker compose up -d && docker compose ps"
 
       - name: Cleanup
         if: always()
