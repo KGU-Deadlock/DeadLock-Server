@@ -38,7 +38,7 @@ public class InterviewController implements InterviewControllerDocs {
     @PostMapping("/{interviewId}/answer")
     @Override
     public ApiResponse<Void> submitAnswer(
-            @PathVariable String interviewId,
+            @PathVariable("interviewId") String interviewId,
             @RequestBody @Valid SubmitAnswerRequest request
     ) {
         SubmitAnswerCommand command = new SubmitAnswerCommand(
@@ -53,7 +53,7 @@ public class InterviewController implements InterviewControllerDocs {
 
     @PostMapping("/{interviewId}/complete")
     @Override
-    public ApiResponse<FeedbackResult> completeInterview(@PathVariable String interviewId) {
+    public ApiResponse<FeedbackResult> completeInterview(@PathVariable("interviewId") String interviewId) {
         return ApiResponse.onSuccess(interviewCommandService.completeInterview(interviewId));
     }
 }
