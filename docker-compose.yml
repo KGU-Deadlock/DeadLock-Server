@@ -215,7 +215,7 @@ services:
         max-file: "2"
 
   mongodb-exporter:
-    image: percona/mongodb_exporter:2.43.1
+    image: percona/mongodb_exporter:0.43.1
     container_name: mongodb-exporter
     restart: always
     command:
