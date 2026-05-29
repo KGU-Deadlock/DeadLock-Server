@@ -25,10 +25,12 @@ public class CsQuestionPersistenceAdapter implements QueryCsQuestionOutputPort {
 
         CsQuestion osQuestion = csQuestionRepository
                 .findOneRandomByCategory(QuestionCategory.OS.name())
+                .orElseThrow(() -> new CustomException(InterviewErrorStatus.INTERVIEW_CS_QUESTION_NOT_ENOUGH))
                 .toDomain();
 
         CsQuestion caQuestion = csQuestionRepository
                 .findOneRandomByCategory(QuestionCategory.COMPUTER_ARCHITECTURE.name())
+                .orElseThrow(() -> new CustomException(InterviewErrorStatus.INTERVIEW_CS_QUESTION_NOT_ENOUGH))
                 .toDomain();
 
         return List.of(osQuestion, caQuestion);
