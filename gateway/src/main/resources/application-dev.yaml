@@ -1,0 +1,167 @@
+spring:
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            # ===== user-service =====
+            - id: auth
+              uri: http://${USER_SERVICE_HOST}:${USER_SERVICE_PORT}
+              predicates:
+                - Path=/v1/auth/**
+            - id: users
+              uri: http://${USER_SERVICE_HOST}:${USER_SERVICE_PORT}
+              predicates:
+                - Path=/v1/users/**
+
+            # ===== topic-service =====
+            - id: topics
+              uri: http://${TOPIC_SERVICE_HOST}:${TOPIC_SERVICE_PORT}
+              predicates:
+                - Path=/v1/topics/**
+
+            # ===== grading-service =====
+            - id: grading
+              uri: http://${GRADING_SERVICE_HOST}:${GRADING_SERVICE_PORT}
+              predicates:
+                - Path=/v1/quiz/grading/**
+
+            # ===== quiz-service =====
+            - id: quiz
+              uri: http://${QUIZ_SERVICE_HOST}:${QUIZ_SERVICE_PORT}
+              predicates:
+                - Path=/v1/quiz/**
+
+            # ===== stt-service =====
+            - id: stt-ws
+              uri: ws://${STT_SERVICE_HOST}:${STT_SERVICE_PORT}
+              predicates:
+                - Path=/v1/ws/**
+
+            # ===== interview-service =====
+            - id: interview
+              uri: http://${INTERVIEW_SERVICE_HOST}:${INTERVIEW_SERVICE_PORT}
+              predicates:
+                - Path=/v1/interview/**
+
+            # ===== ranking-service =====
+            - id: ranking
+              uri: http://${RANKING_SERVICE_HOST}:${RANKING_SERVICE_PORT}
+              predicates:
+                - Path=/v1/ranking/**
+
+            # ===== streak-service =====
+            - id: streak
+              uri: http://${STREAK_SERVICE_HOST}:${STREAK_SERVICE_PORT}
+              predicates:
+                - Path=/v1/streak/**
+
+            # ===== dev-service (dev 프로파일 전용) =====
+            - id: dev
+              uri: http://${DEV_SERVICE_HOST}:${DEV_SERVICE_PORT}
+              predicates:
+                - Path=/v1/dev/**
+
+            # ===== Swagger / OpenAPI (각 서비스 api-docs 프록시) =====
+            - id: swagger-dev-api-docs
+              uri: http://${DEV_SERVICE_HOST}:${DEV_SERVICE_PORT}
+              predicates:
+                - Path=/v3/api-docs/dev
+              filters:
+                - RewritePath=/v3/api-docs/dev, /v3/api-docs
+            - id: swagger-user-api-docs
+              uri: http://${USER_SERVICE_HOST}:${USER_SERVICE_PORT}
+              predicates:
+                - Path=/v3/api-docs/user
+              filters:
+                - RewritePath=/v3/api-docs/user, /v3/api-docs
+            - id: swagger-topic-api-docs
+              uri: http://${TOPIC_SERVICE_HOST}:${TOPIC_SERVICE_PORT}
+              predicates:
+                - Path=/v3/api-docs/topic
+              filters:
+                - RewritePath=/v3/api-docs/topic, /v3/api-docs
+            - id: swagger-quiz-api-docs
+              uri: http://${QUIZ_SERVICE_HOST}:${QUIZ_SERVICE_PORT}
+              predicates:
+                - Path=/v3/api-docs/quiz
+              filters:
+                - RewritePath=/v3/api-docs/quiz, /v3/api-docs
+            - id: swagger-grading-api-docs
+              uri: http://${GRADING_SERVICE_HOST}:${GRADING_SERVICE_PORT}
+              predicates:
+                - Path=/v3/api-docs/grading
+              filters:
+                - RewritePath=/v3/api-docs/grading, /v3/api-docs
+            - id: swagger-stt-api-docs
+              uri: http://${STT_SERVICE_HOST}:${STT_SERVICE_PORT}
+              predicates:
+                - Path=/v3/api-docs/stt
+              filters:
+                - RewritePath=/v3/api-docs/stt, /v3/api-docs
+            - id: swagger-interview-api-docs
+              uri: http://${INTERVIEW_SERVICE_HOST}:${INTERVIEW_SERVICE_PORT}
+              predicates:
+                - Path=/v3/api-docs/interview
+              filters:
+                - RewritePath=/v3/api-docs/interview, /v3/api-docs
+            - id: swagger-ranking-api-docs
+              uri: http://${RANKING_SERVICE_HOST}:${RANKING_SERVICE_PORT}
+              predicates:
+                - Path=/v3/api-docs/ranking
+              filters:
+                - RewritePath=/v3/api-docs/ranking, /v3/api-docs
+            - id: swagger-streak-api-docs
+              uri: http://${STREAK_SERVICE_HOST}:${STREAK_SERVICE_PORT}
+              predicates:
+                - Path=/v3/api-docs/streak
+              filters:
+                - RewritePath=/v3/api-docs/streak, /v3/api-docs
+
+springdoc:
+  swagger-ui:
+    urls:
+      - name: user-service
+        url: /v3/api-docs/user
+      - name: topic-service
+        url: /v3/api-docs/topic
+      - name: quiz-service
+        url: /v3/api-docs/quiz
+      - name: grading-service
+        url: /v3/api-docs/grading
+      - name: stt-service
+        url: /v3/api-docs/stt
+      - name: interview-service
+        url: /v3/api-docs/interview
+      - name: ranking-service
+        url: /v3/api-docs/ranking
+      - name: streak-service
+        url: /v3/api-docs/streak
+      - name: dev-service
+        url: /v3/api-docs/dev
+
+management:
+  endpoints:
+    access:
+      default: none
+    web:
+      base-path: /actuator
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      access: unrestricted
+      probes:
+        enabled: true
+    info:
+      access: unrestricted
+  tracing:
+    enabled: false
+
+logging:
+  level:
+    root: DEBUG
+    com.deadlock.hellocs.gateway: DEBUG
+    org.springframework.cloud.gateway: DEBUG
+    sun.rmi: OFF
+    javax.management.remote.rmi: OFF

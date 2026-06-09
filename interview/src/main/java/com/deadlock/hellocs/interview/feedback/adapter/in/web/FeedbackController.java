@@ -1,6 +1,6 @@
 package com.deadlock.hellocs.interview.feedback.adapter.in.web;
 
-import com.deadlock.hellocs.global.apiPayload.ApiResponse;
+import com.deadlock.hellocs.common.apiPayload.ApiResponse;
 import com.deadlock.hellocs.interview.feedback.adapter.in.web.docs.FeedbackControllerDocs;
 import com.deadlock.hellocs.interview.feedback.application.port.in.QueryFeedbackInputPort;
 import com.deadlock.hellocs.interview.feedback.application.port.in.dto.FeedbackResult;

@@ -1,6 +1,6 @@
 package com.deadlock.hellocs.interview.question.adapter.out.persistence;
 
-import com.deadlock.hellocs.global.exception.CustomException;
+import com.deadlock.hellocs.common.exception.CustomException;
 import com.deadlock.hellocs.interview.exception.InterviewErrorStatus;
 import com.deadlock.hellocs.interview.question.application.port.out.QueryCsQuestionOutputPort;
 import com.deadlock.hellocs.interview.question.domain.CsQuestion;

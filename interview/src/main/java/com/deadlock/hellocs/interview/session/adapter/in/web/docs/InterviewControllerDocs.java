@@ -1,6 +1,7 @@
 package com.deadlock.hellocs.interview.session.adapter.in.web.docs;
 
-import com.deadlock.hellocs.global.apiPayload.ApiResponse;
+import com.deadlock.hellocs.common.apiPayload.ApiResponse;
+import com.deadlock.hellocs.common.web.resolver.CurrentUser;
 import com.deadlock.hellocs.interview.feedback.application.port.in.dto.FeedbackResult;
 import com.deadlock.hellocs.interview.session.adapter.in.web.dto.StartInterviewRequest;
 import com.deadlock.hellocs.interview.session.adapter.in.web.dto.SubmitAnswerRequest;
@@ -11,8 +12,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 
 @Tag(name = "Interview", description = "화상 면접 연습 API")
 @SecurityRequirement(name = "bearerAuth")
@@ -24,7 +23,10 @@ public interface InterviewControllerDocs {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "요청 검증 실패", content = @Content),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "CS 질문 부족 또는 서버 오류", content = @Content)
     })
-    ApiResponse<StartInterviewResult> startInterview(@AuthenticationPrincipal Jwt jwt, StartInterviewRequest request);
+    ApiResponse<StartInterviewResult> startInterview(
+            @Parameter(hidden = true, description = "인증 사용자 ID") @CurrentUser Long userId,
+            StartInterviewRequest request
+    );
 
     @Operation(summary = "답변 제출", description = "각 질문에 대한 답변을 제출합니다.")
     @ApiResponses(value = {

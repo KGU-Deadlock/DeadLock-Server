@@ -1,6 +1,6 @@
 package com.deadlock.hellocs.interview.session.application.service;
 
-import com.deadlock.hellocs.global.exception.CustomException;
+import com.deadlock.hellocs.common.exception.CustomException;
 import com.deadlock.hellocs.interview.exception.InterviewErrorStatus;
 import com.deadlock.hellocs.interview.feedback.application.port.in.CommandFeedbackInputPort;
 import com.deadlock.hellocs.interview.feedback.application.port.in.dto.GenerateFeedbackCommand;
@@ -15,7 +15,8 @@ import com.deadlock.hellocs.interview.session.application.port.out.CommandInterv
 import com.deadlock.hellocs.interview.session.application.port.out.QueryInterviewOutputPort;
 import com.deadlock.hellocs.interview.session.domain.*;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.ApplicationEventPublisher;
+import com.deadlock.hellocs.common.amqp.RabbitMQConfig;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,7 +34,7 @@ public class InterviewCommandService implements CommandInterviewInputPort {
     private final QueryInterviewOutputPort queryInterviewOutputPort;
     private final QueryCsQuestionOutputPort queryCsQuestionOutputPort;
     private final CommandFeedbackInputPort commandFeedbackInputPort;
-    private final ApplicationEventPublisher eventPublisher;
+    private final RabbitTemplate rabbitTemplate;
 
     @Override
     public StartInterviewResult startInterview(StartInterviewCommand command) {
@@ -96,7 +97,7 @@ public class InterviewCommandService implements CommandInterviewInputPort {
         LocalDateTime completedAt = LocalDateTime.now();
         commandInterviewOutputPort.markCompleted(interviewId);
 
-        eventPublisher.publishEvent(new InterviewCompletedEvent(
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_KEY_INTERVIEW, new InterviewCompletedEvent(
                 interviewId,
                 interview.getUserId(),
                 completedAt,

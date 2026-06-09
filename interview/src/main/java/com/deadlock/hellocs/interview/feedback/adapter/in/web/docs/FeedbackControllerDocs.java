@@ -1,6 +1,6 @@
 package com.deadlock.hellocs.interview.feedback.adapter.in.web.docs;
 
-import com.deadlock.hellocs.global.apiPayload.ApiResponse;
+import com.deadlock.hellocs.common.apiPayload.ApiResponse;
 import com.deadlock.hellocs.interview.feedback.application.port.in.dto.FeedbackResult;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;

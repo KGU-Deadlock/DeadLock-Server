@@ -1,7 +1,7 @@
 package com.deadlock.hellocs.interview.exception;
 
-import com.deadlock.hellocs.global.apiPayload.code.BaseErrorCode;
-import com.deadlock.hellocs.global.apiPayload.code.ErrorReasonDto;
+import com.deadlock.hellocs.common.apiPayload.code.BaseErrorCode;
+import com.deadlock.hellocs.common.apiPayload.code.ErrorReasonDto;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import org.springframework.http.HttpStatus;

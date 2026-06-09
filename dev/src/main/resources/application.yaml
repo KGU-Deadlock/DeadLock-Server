@@ -1,0 +1,29 @@
+server:
+  port: ${DEV_SERVICE_PORT}
+  shutdown: graceful
+  forward-headers-strategy: framework
+
+spring:
+  application:
+    name: dev-service
+
+jwt:
+  secret: ${JWT_SECRET}
+  access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION}
+  refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION}
+
+service:
+  user:
+    url: ${USER_SERVICE_URL}
+  topic:
+    url: ${TOPIC_SERVICE_URL}
+  quiz:
+    url: ${QUIZ_SERVICE_URL}
+  interview:
+    url: ${INTERVIEW_SERVICE_URL}
+  grading:
+    url: ${GRADING_SERVICE_URL}
+
+logging:
+  level:
+    root: INFO

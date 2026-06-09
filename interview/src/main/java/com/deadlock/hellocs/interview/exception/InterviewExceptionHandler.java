@@ -1,7 +1,7 @@
 package com.deadlock.hellocs.interview.exception;
 
-import com.deadlock.hellocs.global.apiPayload.ApiResponse;
-import com.deadlock.hellocs.global.exception.CustomException;
+import com.deadlock.hellocs.common.apiPayload.ApiResponse;
+import com.deadlock.hellocs.common.exception.CustomException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;

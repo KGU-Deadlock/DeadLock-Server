@@ -1,6 +1,6 @@
 package com.deadlock.hellocs.interview.session.adapter.out.persistence;
 
-import com.deadlock.hellocs.global.exception.CustomException;
+import com.deadlock.hellocs.common.exception.CustomException;
 import com.deadlock.hellocs.interview.exception.InterviewErrorStatus;
 import com.deadlock.hellocs.interview.session.adapter.out.persistence.entity.InterviewAnswerJpaEntity;
 import com.deadlock.hellocs.interview.session.adapter.out.persistence.entity.InterviewJpaEntity;

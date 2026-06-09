@@ -1,0 +1,23 @@
+management:
+  endpoints:
+    access:
+      default: none
+    web:
+      base-path: /actuator
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      access: unrestricted
+      probes:
+        enabled: true
+    info:
+      access: unrestricted
+  tracing:
+    enabled: false
+
+logging:
+  level:
+    root: DEBUG
+    sun.rmi: OFF
+    javax.management.remote.rmi: OFF

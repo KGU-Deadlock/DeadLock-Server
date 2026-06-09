@@ -1,6 +1,7 @@
 package com.deadlock.hellocs.interview.session.adapter.in.web;
 
-import com.deadlock.hellocs.global.apiPayload.ApiResponse;
+import com.deadlock.hellocs.common.apiPayload.ApiResponse;
+import com.deadlock.hellocs.common.web.resolver.CurrentUser;
 import com.deadlock.hellocs.interview.feedback.application.port.in.dto.FeedbackResult;
 import com.deadlock.hellocs.interview.session.adapter.in.web.docs.InterviewControllerDocs;
 import com.deadlock.hellocs.interview.session.adapter.in.web.dto.StartInterviewRequest;
@@ -12,8 +13,6 @@ import com.deadlock.hellocs.interview.session.application.port.in.dto.SubmitAnsw
 import com.deadlock.hellocs.interview.session.application.service.InterviewCommandService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -27,10 +26,9 @@ public class InterviewController implements InterviewControllerDocs {
     @PostMapping("/start")
     @Override
     public ApiResponse<StartInterviewResult> startInterview(
-            @AuthenticationPrincipal Jwt jwt,
+            @CurrentUser Long userId,
             @RequestBody @Valid StartInterviewRequest request
     ) {
-        Long userId = Long.valueOf(jwt.getSubject());
         StartInterviewCommand command = new StartInterviewCommand(userId, request.companyName(), request.position());
         return ApiResponse.onSuccess(commandInterviewInputPort.startInterview(command));
     }

@@ -25,16 +25,13 @@ repositories {
 
 dependencies {
     implementation project(':common-web')
-    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-    implementation 'org.springframework.boot:spring-boot-starter-restclient'
-    implementation project(':common-amqp')
+    implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
-    implementation 'io.micrometer:micrometer-tracing-bridge-otel'
-    implementation 'io.opentelemetry:opentelemetry-exporter-otlp'
-    // oauth2-resource-server: global:api로 전이됨 (직접 선언 제거)
+    implementation 'io.jsonwebtoken:jjwt-api:0.12.5'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.5'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.5'
     implementation 'me.paulschwarz:spring-dotenv:4.0.0'
-    runtimeOnly 'org.postgresql:postgresql'
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
@@ -46,5 +43,5 @@ tasks.named('test') {
 }
 
 bootJar {
-    archiveFileName = 'interview-service.jar'
+    archiveFileName = 'dev-service.jar'
 }

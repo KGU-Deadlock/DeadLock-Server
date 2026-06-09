@@ -1,6 +1,6 @@
 package com.deadlock.hellocs.interview.feedback.adapter.out.external;
 
-import com.deadlock.hellocs.global.exception.CustomException;
+import com.deadlock.hellocs.common.exception.CustomException;
 import com.deadlock.hellocs.interview.exception.InterviewErrorStatus;
 import com.deadlock.hellocs.interview.feedback.application.port.out.AiFeedbackOutputPort;
 import com.deadlock.hellocs.interview.feedback.application.port.out.dto.AiFeedbackRequest;

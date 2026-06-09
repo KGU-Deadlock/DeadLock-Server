@@ -1,0 +1,25 @@
+management:
+  server:
+    port: ${MANAGEMENT_PORT}
+    address: 0.0.0.0
+  endpoints:
+    access:
+      default: none
+    web:
+      base-path: /actuator
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      access: unrestricted
+      probes:
+        enabled: true
+    info:
+      access: unrestricted
+  health:
+    rabbit:
+      enabled: false
+
+logging:
+  level:
+    com.deadlock.hellocs: INFO
