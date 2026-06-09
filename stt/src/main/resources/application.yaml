@@ -1,0 +1,16 @@
+server:
+  port: ${STT_SERVICE_PORT}
+  shutdown: graceful
+  forward-headers-strategy: framework
+
+spring:
+  application:
+    name: stt-service
+
+ai:
+  stt:
+    transcribe-endpoint: ${AI_STT_TRANSCRIBE_ENDPOINT}
+
+logging:
+  level:
+    root: INFO
