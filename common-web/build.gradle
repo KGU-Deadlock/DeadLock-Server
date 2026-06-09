@@ -1,0 +1,48 @@
+plugins {
+    id 'java-library'
+    id 'io.spring.dependency-management' version '1.1.7'
+}
+
+group = 'com.deadlock'
+version = '0.0.1-SNAPSHOT'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+}
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencyManagement {
+    imports {
+        mavenBom 'org.springframework.boot:spring-boot-dependencies:4.0.1'
+    }
+}
+
+dependencies {
+    // 모든 서비스에 전이되는 공통 의존성 (api)
+    api project(':common')                                          // ApiResponse·ErrorCode·CustomException 전이
+    api 'org.springframework.boot:spring-boot-starter-web'         // @RestControllerAdvice, WebMvcConfigurer 등
+    api 'org.springframework.boot:spring-boot-starter-validation'  // @Valid, ConstraintViolation 등
+    api 'org.springdoc:springdoc-openapi-starter-webmvc-api:3.0.2' // SwaggerConfig
+    // spring-security: 게이트웨이에서 인증/인가를 전담하므로 다운스트림 서비스에 제거
+    // user-service는 Kakao OAuth2 로그인을 위해 자체 SecurityFilterChain을 선언
+    compileOnly 'io.micrometer:micrometer-core'                       // MetricsConfig (MeterFilter)
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}

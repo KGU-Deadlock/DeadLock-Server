@@ -1,0 +1,3 @@
+com.deadlock.hellocs.common.web.config.WebSupportAutoConfiguration
+com.deadlock.hellocs.common.web.config.SwaggerConfig
+com.deadlock.hellocs.common.web.config.MetricsConfig
