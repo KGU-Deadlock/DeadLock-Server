@@ -14,6 +14,8 @@ import com.deadlock.hellocs.ranking.application.port.out.LoadUserProfilePort;
 import com.deadlock.hellocs.ranking.application.port.out.SaveRankingPort;
 import com.deadlock.hellocs.ranking.domain.Ranking;
 import com.deadlock.hellocs.ranking.domain.RankingKey;
+import com.deadlock.hellocs.common.apiPayload.code.status.ErrorStatus;
+import com.deadlock.hellocs.common.exception.CustomException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -61,7 +63,7 @@ public class RankingService implements UpdateRankingUseCase, QueryRankingUseCase
             return new RankingDetailResult(
                     type.name(), rankings,
                     toMyRankingResult(myProfile, null, 0L),
-                    List.of(), 0
+                    List.of()
             );
         }
 
@@ -72,7 +74,7 @@ public class RankingService implements UpdateRankingUseCase, QueryRankingUseCase
         return new RankingDetailResult(
                 type.name(), rankings,
                 toMyRankingResult(myProfile, myRankData.rank(), myRankData.score()),
-                belowMyRankings, 0
+                belowMyRankings
         );
     }
 
@@ -80,7 +82,8 @@ public class RankingService implements UpdateRankingUseCase, QueryRankingUseCase
         return switch (type) {
             case ALL -> RankingKey.total();
             case INTEREST -> RankingKey.topic(
-                    loadUserInterestPort.loadFirstInterestTopicId(userId).orElseThrow()
+                    loadUserInterestPort.loadFirstInterestTopicId(userId)
+                            .orElseThrow(() -> new CustomException(ErrorStatus._NOT_FOUND))
             );
         };
     }

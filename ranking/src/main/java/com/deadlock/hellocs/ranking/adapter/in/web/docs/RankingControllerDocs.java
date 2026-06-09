@@ -1,6 +1,7 @@
 package com.deadlock.hellocs.ranking.adapter.in.web.docs;
 
-import com.deadlock.hellocs.global.apiPayload.ApiResponse;
+import com.deadlock.hellocs.common.apiPayload.ApiResponse;
+import com.deadlock.hellocs.common.web.resolver.CurrentUser;
 import com.deadlock.hellocs.ranking.application.port.in.dto.RankingDetailResult;
 import com.deadlock.hellocs.ranking.application.port.in.dto.RankingQueryType;
 import com.deadlock.hellocs.ranking.application.port.in.dto.RankingSummaryResult;
@@ -11,8 +12,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.RequestParam;
 
 @Tag(name = "Ranking", description = "랭킹 조회 API")
@@ -38,7 +37,8 @@ public interface RankingControllerDocs {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
     ApiResponse<RankingDetailResult> getRanking(
-            @AuthenticationPrincipal Jwt jwt,
+            @Parameter(hidden = true, description = "인증 사용자 ID")
+            @CurrentUser Long userId,
             @Parameter(
                     description = "랭킹 조회 기준입니다. `ALL`은 전체 사용자 기준, `INTEREST`는 로그인한 사용자의 관심 주제 기준 랭킹을 의미합니다.",
                     schema = @Schema(defaultValue = "ALL", allowableValues = {"ALL", "INTEREST"})

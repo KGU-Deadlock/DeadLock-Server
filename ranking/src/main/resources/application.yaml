@@ -1,0 +1,28 @@
+server:
+  port: ${RANKING_SERVICE_PORT}
+  shutdown: graceful
+  forward-headers-strategy: framework
+
+spring:
+  application:
+    name: ranking-service
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+      password: ${REDIS_PASSWORD}
+      timeout: ${REDIS_TIMEOUT}
+  rabbitmq:
+    host: ${RABBITMQ_HOST}
+    port: ${RABBITMQ_PORT}
+    username: ${RABBITMQ_USERNAME}
+    password: ${RABBITMQ_PASSWORD}
+    virtual-host: /
+
+service:
+  user:
+    url: ${USER_SERVICE_URL}
+
+logging:
+  level:
+    root: INFO
