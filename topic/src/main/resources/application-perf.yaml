@@ -1,0 +1,40 @@
+management:
+  server:
+    port: ${MANAGEMENT_PORT}
+    address: 0.0.0.0
+  endpoints:
+    access:
+      default: none
+    web:
+      base-path: /actuator
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      access: unrestricted
+      probes:
+        enabled: true
+    info:
+      access: unrestricted
+    prometheus:
+      access: unrestricted
+  metrics:
+    tags:
+      application: topic-service
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+  tracing:
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
+      endpoint: http://${TEMPO_HOST}:4318/v1/traces
+
+logging:
+  level:
+    com.deadlock.hellocs: INFO
