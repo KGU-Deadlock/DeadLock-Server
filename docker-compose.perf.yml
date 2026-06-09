@@ -1,0 +1,796 @@
+################################################################################
+# HelloCS — Perf MSA Compose
+# 서비스: gateway | user-service | topic-service | quiz-service |
+#          interview-service | ranking-service | streak-service
+# 인프라: 서비스별 전용 Postgres, 공유 Redis/Mongo/RabbitMQ
+# 모니터링: prometheus / grafana / cadvisor / node-exporter / tempo
+# 부하테스트: wiremock / seeders / exporters
+#
+# 실행:
+#   --profile app          → 인프라 + 앱 서비스
+#   --profile monitoring   → 모니터링 스택
+#   --profile app --profile monitoring → 전체
+################################################################################
+
+services:
+
+  # ─────────────────────────────────────────────────────────────
+  # 공유 인프라
+  # ─────────────────────────────────────────────────────────────
+
+  rabbitmq:
+    profiles: [app]
+    image: rabbitmq:4.0-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+      - "15692:15692"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    profiles: [app]
+    image: redis:7.4-alpine
+    command: ["redis-server", "--appendonly", "no", "--save", ""]
+    volumes:
+      - redis-perf-data:/data
+    ports:
+      - "6379:6379"
+    depends_on:
+      redis-seeder:
+        condition: service_completed_successfully
+    deploy:
+      resources:
+        limits:
+          memory: ${REDIS_MEMORY_LIMIT}
+          cpus: '${REDIS_CPU_LIMIT}'
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  mongo:
+    profiles: [app]
+    image: mongo:8.0
+    environment:
+      MONGO_INITDB_DATABASE: ${MONGO_DB}
+    volumes:
+      - mongo-perf-data:/data/db
+    ports:
+      - "27017:27017"
+    deploy:
+      resources:
+        limits:
+          memory: ${MONGO_MEMORY_LIMIT}
+          cpus: '${MONGO_CPU_LIMIT}'
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval \"db.adminCommand('ping').ok\" | grep -q 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  # ─── 서비스별 전용 Postgres ───────────────────────────────
+
+  postgres-user:
+    profiles: [app]
+    image: postgres:17-alpine
+    command:
+      - "postgres"
+      - "-c"
+      - "log_min_duration_statement=100"
+      - "-c"
+      - "log_statement=none"
+      - "-c"
+      - "shared_preload_libraries=pg_stat_statements"
+      - "-c"
+      - "pg_stat_statements.track=all"
+    environment:
+      POSTGRES_DB: ${USER_POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      DATASET: ${DATASET}
+      DATASET_PG_FILE: postgres-user.sql
+    volumes:
+      - postgres-user-perf-data:/var/lib/postgresql/data
+      - ./ops/postgres/init:/docker-entrypoint-initdb.d:ro
+      - ./ops/perf/datasets:/perf-datasets:ro
+    ports:
+      - "5432:5432"
+    deploy:
+      resources:
+        limits:
+          memory: ${POSTGRES_MEMORY_LIMIT}
+          cpus: '${POSTGRES_CPU_LIMIT}'
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${USER_POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-topic:
+    profiles: [app]
+    image: postgres:17-alpine
+    command:
+      - "postgres"
+      - "-c"
+      - "shared_preload_libraries=pg_stat_statements"
+      - "-c"
+      - "pg_stat_statements.track=all"
+    environment:
+      POSTGRES_DB: ${TOPIC_POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      DATASET: ${DATASET}
+      DATASET_PG_FILE: postgres-topic.sql
+    volumes:
+      - postgres-topic-perf-data:/var/lib/postgresql/data
+      - ./ops/postgres/init:/docker-entrypoint-initdb.d:ro
+      - ./ops/perf/datasets:/perf-datasets:ro
+    deploy:
+      resources:
+        limits:
+          memory: ${POSTGRES_MEMORY_LIMIT}
+          cpus: '${POSTGRES_CPU_LIMIT}'
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${TOPIC_POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-quiz:
+    profiles: [app]
+    image: postgres:17-alpine
+    command:
+      - "postgres"
+      - "-c"
+      - "log_min_duration_statement=100"
+      - "-c"
+      - "shared_preload_libraries=pg_stat_statements"
+      - "-c"
+      - "pg_stat_statements.track=all"
+    environment:
+      POSTGRES_DB: ${QUIZ_POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      DATASET: ${DATASET}
+      DATASET_PG_FILE: postgres-quiz.sql
+    volumes:
+      - postgres-quiz-perf-data:/var/lib/postgresql/data
+      - ./ops/postgres/init:/docker-entrypoint-initdb.d:ro
+      - ./ops/perf/datasets:/perf-datasets:ro
+    deploy:
+      resources:
+        limits:
+          memory: ${POSTGRES_MEMORY_LIMIT}
+          cpus: '${POSTGRES_CPU_LIMIT}'
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${QUIZ_POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-interview:
+    profiles: [app]
+    image: postgres:17-alpine
+    command:
+      - "postgres"
+      - "-c"
+      - "shared_preload_libraries=pg_stat_statements"
+      - "-c"
+      - "pg_stat_statements.track=all"
+    environment:
+      POSTGRES_DB: ${INTERVIEW_POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      DATASET: ${DATASET}
+      DATASET_PG_FILE: postgres-interview.sql
+    volumes:
+      - postgres-interview-perf-data:/var/lib/postgresql/data
+      - ./ops/postgres/init:/docker-entrypoint-initdb.d:ro
+      - ./ops/perf/datasets:/perf-datasets:ro
+    deploy:
+      resources:
+        limits:
+          memory: ${POSTGRES_MEMORY_LIMIT}
+          cpus: '${POSTGRES_CPU_LIMIT}'
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${INTERVIEW_POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── 시딩 ────────────────────────────────────────────────────
+
+  redis-seeder:
+    profiles: [app]
+    image: redis:7.4-alpine
+    environment:
+      DATASET: ${DATASET}
+    entrypoint: ["sh", "/seed/redis-seed.sh"]
+    volumes:
+      - redis-perf-data:/data
+      - ./ops/perf/datasets:/perf-datasets:ro
+      - ./ops/perf/seeders/redis-seed.sh:/seed/redis-seed.sh:ro
+
+  mongo-seeder:
+    profiles: [app]
+    image: mongo:8.0
+    environment:
+      DATASET: ${DATASET}
+    entrypoint: ["bash", "/seed/mongo-seed.sh"]
+    volumes:
+      - ./ops/perf/datasets:/perf-datasets:ro
+      - ./ops/perf/seeders/mongo-seed.sh:/seed/mongo-seed.sh:ro
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  # ─────────────────────────────────────────────────────────────
+  # 마이크로서비스
+  # ─────────────────────────────────────────────────────────────
+
+  user-service:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: user/Dockerfile
+    image: deadlock-user-service:perf
+    env_file:
+      - .env.perf
+    environment:
+      SPRING_PROFILES_ACTIVE: perf
+      SERVER_PORT: 8081
+      MANAGEMENT_PORT: 8091
+      POSTGRES_HOST: postgres-user
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${USER_POSTGRES_DB}
+      USER_SERVICE_URL: http://user-service:8081
+      TOPIC_SERVICE_URL: http://topic-service:8082
+    depends_on:
+      postgres-user:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: ${USER_MEMORY_LIMIT}
+          cpus: '${USER_CPU_LIMIT}'
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8091/actuator/health/readiness > /dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  topic-service:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: topic/Dockerfile
+    image: deadlock-topic-service:perf
+    env_file:
+      - .env.perf
+    environment:
+      SPRING_PROFILES_ACTIVE: perf
+      SERVER_PORT: 8082
+      MANAGEMENT_PORT: 8092
+      POSTGRES_HOST: postgres-topic
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${TOPIC_POSTGRES_DB}
+    depends_on:
+      postgres-topic:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: ${TOPIC_MEMORY_LIMIT}
+          cpus: '${TOPIC_CPU_LIMIT}'
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8092/actuator/health/readiness > /dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  quiz-service:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: quiz/Dockerfile
+    image: deadlock-quiz-service:perf
+    env_file:
+      - .env.perf
+    environment:
+      SPRING_PROFILES_ACTIVE: perf
+      SERVER_PORT: 8083
+      MANAGEMENT_PORT: 8093
+      POSTGRES_HOST: postgres-quiz
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${QUIZ_POSTGRES_DB}
+      USER_SERVICE_URL: http://user-service:8081
+      TOPIC_SERVICE_URL: http://topic-service:8082
+    depends_on:
+      postgres-quiz:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+      topic-service:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: ${QUIZ_MEMORY_LIMIT}
+          cpus: '${QUIZ_CPU_LIMIT}'
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8093/actuator/health/readiness > /dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  interview-service:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: interview/Dockerfile
+    image: deadlock-interview-service:perf
+    env_file:
+      - .env.perf
+    environment:
+      SPRING_PROFILES_ACTIVE: perf
+      SERVER_PORT: 8084
+      MANAGEMENT_PORT: 8094
+      POSTGRES_HOST: postgres-interview
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${INTERVIEW_POSTGRES_DB}
+    depends_on:
+      postgres-interview:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: ${INTERVIEW_MEMORY_LIMIT}
+          cpus: '${INTERVIEW_CPU_LIMIT}'
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8094/actuator/health/readiness > /dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  ranking-service:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: ranking/Dockerfile
+    image: deadlock-ranking-service:perf
+    env_file:
+      - .env.perf
+    environment:
+      SPRING_PROFILES_ACTIVE: perf
+      SERVER_PORT: 8085
+      MANAGEMENT_PORT: 8095
+      USER_SERVICE_URL: http://user-service:8081
+    depends_on:
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: ${RANKING_MEMORY_LIMIT}
+          cpus: '${RANKING_CPU_LIMIT}'
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8095/actuator/health/readiness > /dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  streak-service:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: streak/Dockerfile
+    image: deadlock-streak-service:perf
+    env_file:
+      - .env.perf
+    environment:
+      SPRING_PROFILES_ACTIVE: perf
+      SERVER_PORT: 8086
+      MANAGEMENT_PORT: 8096
+    depends_on:
+      mongo:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: ${STREAK_MEMORY_LIMIT}
+          cpus: '${STREAK_CPU_LIMIT}'
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8096/actuator/health/readiness > /dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  grading-service:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: grading/Dockerfile
+    image: deadlock-grading-service:perf
+    env_file:
+      - .env.perf
+    environment:
+      SPRING_PROFILES_ACTIVE: perf
+      SERVER_PORT: 8087
+      MANAGEMENT_PORT: 8097
+      GRADING_SERVICE_PORT: 8087
+      TOPIC_SERVICE_URL: http://topic-service:8082
+      QUIZ_SERVICE_URL: http://quiz-service:8083
+    depends_on:
+      redis:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      quiz-service:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: ${GRADING_MEMORY_LIMIT}
+          cpus: '${GRADING_CPU_LIMIT}'
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8097/actuator/health/readiness > /dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  stt-service:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: stt/Dockerfile
+    image: deadlock-stt-service:perf
+    env_file:
+      - .env.perf
+    environment:
+      SPRING_PROFILES_ACTIVE: perf
+      SERVER_PORT: 8088
+      MANAGEMENT_PORT: 8098
+      STT_SERVICE_PORT: 8088
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: ${STT_MEMORY_LIMIT}
+          cpus: '${STT_CPU_LIMIT}'
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8098/actuator/health/readiness > /dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  gateway:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: gateway/Dockerfile
+    image: deadlock-gateway:perf
+    env_file:
+      - .env.perf
+    environment:
+      SPRING_PROFILES_ACTIVE: perf
+      SERVER_PORT: 8080
+      MANAGEMENT_PORT: 8081
+      USER_SERVICE_HOST: user-service
+      USER_SERVICE_PORT: 8081
+      TOPIC_SERVICE_HOST: topic-service
+      TOPIC_SERVICE_PORT: 8082
+      QUIZ_SERVICE_HOST: quiz-service
+      QUIZ_SERVICE_PORT: 8083
+      INTERVIEW_SERVICE_HOST: interview-service
+      INTERVIEW_SERVICE_PORT: 8084
+      RANKING_SERVICE_HOST: ranking-service
+      RANKING_SERVICE_PORT: 8085
+      STREAK_SERVICE_HOST: streak-service
+      STREAK_SERVICE_PORT: 8086
+      GRADING_SERVICE_HOST: grading-service
+      GRADING_SERVICE_PORT: 8087
+      STT_SERVICE_HOST: stt-service
+      STT_SERVICE_PORT: 8088
+      DEV_SERVICE_HOST: dev-service
+      DEV_SERVICE_PORT: 8090
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+    depends_on:
+      user-service:
+        condition: service_healthy
+      topic-service:
+        condition: service_healthy
+      quiz-service:
+        condition: service_healthy
+      interview-service:
+        condition: service_healthy
+      ranking-service:
+        condition: service_healthy
+      streak-service:
+        condition: service_healthy
+      grading-service:
+        condition: service_healthy
+      stt-service:
+        condition: service_healthy
+      dev-service:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: ${GATEWAY_MEMORY_LIMIT}
+          cpus: '${GATEWAY_CPU_LIMIT}'
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8081/actuator/health/readiness > /dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+
+  dev-service:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: dev/Dockerfile
+    image: deadlock-dev-service:perf
+    env_file:
+      - .env.perf
+    environment:
+      SPRING_PROFILES_ACTIVE: perf
+      DEV_SERVICE_PORT: 8090
+      MANAGEMENT_PORT: 8099
+      USER_SERVICE_URL: http://user-service:8081
+      TOPIC_SERVICE_URL: http://topic-service:8082
+      QUIZ_SERVICE_URL: http://quiz-service:8083
+      INTERVIEW_SERVICE_URL: http://interview-service:8084
+      GRADING_SERVICE_URL: http://grading-service:8087
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+      topic-service:
+        condition: service_healthy
+      quiz-service:
+        condition: service_healthy
+      interview-service:
+        condition: service_healthy
+      grading-service:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: '0.5'
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8099/actuator/health/readiness > /dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  # ─── 부하테스트 지원 ────────────────────────────────────────
+
+  wiremock:
+    profiles: [app]
+    image: wiremock/wiremock:3.9.1
+    restart: always
+    command: ["--global-response-templating", "--verbose"]
+    volumes:
+      - ./ops/wiremock/mappings:/home/wiremock/mappings:ro
+    ports:
+      - "8089:8080"
+
+  postgres_exporter_user:
+    profiles: [app]
+    image: prometheuscommunity/postgres-exporter
+    environment:
+      DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-user:5432/${USER_POSTGRES_DB}?sslmode=disable"
+    command:
+      - "--extend.query-path=/etc/postgres_exporter/queries.yaml"
+      - "--collector.stat_statements"
+      - "--collector.statio_user_tables"
+    volumes:
+      - ./ops/postgres_exporter/queries.yaml:/etc/postgres_exporter/queries.yaml:ro
+    ports:
+      - "9187:9187"
+    depends_on:
+      postgres-user:
+        condition: service_healthy
+
+  postgres_exporter_topic:
+    profiles: [app]
+    image: prometheuscommunity/postgres-exporter
+    environment:
+      DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-topic:5432/${TOPIC_POSTGRES_DB}?sslmode=disable"
+    command:
+      - "--extend.query-path=/etc/postgres_exporter/queries.yaml"
+      - "--collector.stat_statements"
+      - "--collector.statio_user_tables"
+    volumes:
+      - ./ops/postgres_exporter/queries.yaml:/etc/postgres_exporter/queries.yaml:ro
+    ports:
+      - "9188:9187"
+    depends_on:
+      postgres-topic:
+        condition: service_healthy
+
+  postgres_exporter_quiz:
+    profiles: [app]
+    image: prometheuscommunity/postgres-exporter
+    environment:
+      DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-quiz:5432/${QUIZ_POSTGRES_DB}?sslmode=disable"
+    command:
+      - "--extend.query-path=/etc/postgres_exporter/queries.yaml"
+      - "--collector.stat_statements"
+      - "--collector.statio_user_tables"
+    volumes:
+      - ./ops/postgres_exporter/queries.yaml:/etc/postgres_exporter/queries.yaml:ro
+    ports:
+      - "9189:9187"
+    depends_on:
+      postgres-quiz:
+        condition: service_healthy
+
+  postgres_exporter_interview:
+    profiles: [app]
+    image: prometheuscommunity/postgres-exporter
+    environment:
+      DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-interview:5432/${INTERVIEW_POSTGRES_DB}?sslmode=disable"
+    command:
+      - "--extend.query-path=/etc/postgres_exporter/queries.yaml"
+      - "--collector.stat_statements"
+      - "--collector.statio_user_tables"
+    volumes:
+      - ./ops/postgres_exporter/queries.yaml:/etc/postgres_exporter/queries.yaml:ro
+    ports:
+      - "9190:9187"
+    depends_on:
+      postgres-interview:
+        condition: service_healthy
+
+  mongodb_exporter:
+    profiles: [app]
+    image: percona/mongodb_exporter:0.44.0
+    command:
+      - "--mongodb.uri=mongodb://mongo:27017"
+      - "--compatible-mode"
+      - "--collect-all"
+    ports:
+      - "9216:9216"
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  redis_exporter:
+    profiles: [app]
+    image: oliver006/redis_exporter:v1.63.0
+    environment:
+      REDIS_ADDR: "redis://redis:6379"
+    ports:
+      - "9121:9121"
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # ─────────────────────────────────────────────────────────────
+  # 모니터링 스택
+  # ─────────────────────────────────────────────────────────────
+
+  tempo:
+    profiles: [monitoring]
+    image: grafana/tempo:2.6.1
+    command: ["-config.file=/etc/tempo/tempo.yaml"]
+    volumes:
+      - ./ops/tempo/tempo.yaml:/etc/tempo/tempo.yaml:ro
+      - tempo-perf-data:/var/tempo
+    ports:
+      - "3200:3200"
+      - "4317:4317"
+      - "4318:4318"
+
+  cadvisor:
+    profiles: [monitoring]
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    privileged: true
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    ports:
+      - "9080:8080"
+
+  node-exporter:
+    profiles: [monitoring]
+    image: prom/node-exporter:v1.8.2
+    pid: "host"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
+    ports:
+      - "9100:9100"
+
+  prometheus:
+    profiles: [monitoring]
+    image: prom/prometheus:v2.54.1
+    restart: always
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-lifecycle"
+      - "--web.enable-remote-write-receiver"
+      - "--enable-feature=native-histograms"
+    volumes:
+      - ./ops/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./ops/prometheus/rules:/etc/prometheus/rules:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+
+  grafana:
+    profiles: [monitoring]
+    image: grafana/grafana:11.2.2
+    restart: always
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./ops/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "3000:3000"
+
+volumes:
+  redis-perf-data:
+  mongo-perf-data:
+  tempo-perf-data:
+  prometheus-data:
+  grafana-data:
+  postgres-user-perf-data:
+  postgres-topic-perf-data:
+  postgres-quiz-perf-data:
+  postgres-interview-perf-data:

@@ -1,0 +1,133 @@
+################################################################################
+# HelloCS — Perf Bake 오버라이드
+#
+# docker-compose.perf.yml 위에 겹쳐 적용하는 오버라이드.
+# Bake(데이터 생성) 모드에서만 달라지는 설정만 포함한다:
+#   - JPA 4종: ddl-auto=create (빈 스키마에서 새로 생성)
+#   - 빠른 기동: lazy-init + 헬스체크 인터벌 단축(10s→3s)
+#   - 시딩 throughput 확보: CPU/메모리 한도 완화 (perf 측정용 throttle 무력화)
+#
+# ⚠️ perf 측정값에 영향을 주는 설정(리소스 한도·lazy-init)은 절대 base
+#    (docker-compose.perf.yml)에 넣지 않는다. 이 파일은 bake 전용이며,
+#    perf 테스트(run.ps1)는 이 오버라이드 없이 base 만 사용한다.
+#
+# 사용:
+#   wsl docker compose -p hellocs-bake --env-file .env.perf \
+#     -f docker-compose.perf.yml -f docker-compose.perf.bake.yml --profile app ...
+#
+# DATASET="" 로 기동하면 02-load-dataset.sh / redis-seed.sh / mongo-seed.sh 모두 no-op.
+################################################################################
+
+# ── 공통 프래그먼트 (YAML 앵커) ───────────────────────────────────────────────
+
+# 헬스체크 타이밍만 덮어씀 — base 의 test 명령은 compose 병합으로 보존된다.
+# 직렬 의존성 체인(인프라→user/topic→quiz→dev→gateway)이라 단계마다 감지가
+# 빨라지면 누적 절약이 크다.
+x-fast-health: &fast-health
+  interval: 3s
+  timeout: 5s
+  retries: 20
+  start_period: 30s
+
+# bake 리소스 완화 — bake 는 성능 측정이 아니므로 throttle 불필요.
+# WSL 8코어 기준, 단일 컨테이너가 최대 2코어까지 쓸 수 있도록 캡만 상향(예약 아님).
+x-bake-deploy: &bake-deploy
+  resources:
+    limits:
+      cpus: '2.0'
+      memory: 768m
+
+# JVM: 완화된 메모리 한도에 맞춰 힙 비중 상향(시딩 중 GC 부담 감소).
+# 시딩 루프는 정상 상태 처리량이 중요하므로 TieredStopAtLevel 등 startup-only
+# 옵션은 쓰지 않는다(C2 JIT 유지).
+x-bake-java-opts: &bake-java-opts "-XX:MaxRAMPercentage=65"
+
+services:
+
+  # ── 데이터스토어: 시딩 쓰기 throughput 확보 (CPU/메모리 완화) ─────
+  postgres-user:
+    deploy: *bake-deploy
+  postgres-topic:
+    deploy: *bake-deploy
+  postgres-quiz:
+    deploy: *bake-deploy
+  postgres-interview:
+    deploy: *bake-deploy
+  redis:
+    deploy: *bake-deploy
+  mongo:
+    deploy: *bake-deploy
+
+  # ── JPA 4종: ddl-auto=create + lazy-init + 완화 + 빠른 헬스체크 ──
+  user-service:
+    environment:
+      SPRING_JPA_HIBERNATE_DDL_AUTO: create
+      SPRING_MAIN_LAZY_INITIALIZATION: "true"
+      JAVA_OPTS: *bake-java-opts
+    deploy: *bake-deploy
+    healthcheck: *fast-health
+
+  topic-service:
+    environment:
+      SPRING_JPA_HIBERNATE_DDL_AUTO: create
+      SPRING_MAIN_LAZY_INITIALIZATION: "true"
+      JAVA_OPTS: *bake-java-opts
+    deploy: *bake-deploy
+    healthcheck: *fast-health
+
+  quiz-service:
+    environment:
+      SPRING_JPA_HIBERNATE_DDL_AUTO: create
+      SPRING_MAIN_LAZY_INITIALIZATION: "true"
+      JAVA_OPTS: *bake-java-opts
+    deploy: *bake-deploy
+    healthcheck: *fast-health
+
+  interview-service:
+    environment:
+      SPRING_JPA_HIBERNATE_DDL_AUTO: create
+      SPRING_MAIN_LAZY_INITIALIZATION: "true"
+      JAVA_OPTS: *bake-java-opts
+    deploy: *bake-deploy
+    healthcheck: *fast-health
+
+  # ── 이벤트 소비자 3종 ───────────────────────────────────────────
+  # ranking·streak 은 RabbitMQ 리스너로 채점 이벤트를 소비해 데이터를 기록한다.
+  # lazy-init 시 리스너 컨테이너 기동이 지연/누락될 위험이 있어 시딩 데이터가
+  # 불완전해질 수 있으므로 lazy-init 을 적용하지 않는다(CPU 완화만으로 충분히 빨라짐).
+  # grading 도 메시징 경로에 있어 동일하게 보수적으로 둔다.
+  ranking-service:
+    deploy: *bake-deploy
+    healthcheck: *fast-health
+
+  streak-service:
+    deploy: *bake-deploy
+    healthcheck: *fast-health
+
+  grading-service:
+    deploy: *bake-deploy
+    healthcheck: *fast-health
+
+  # ── 나머지: lazy-init + 완화 + 빠른 헬스체크 ────────────────────
+  stt-service:
+    environment:
+      SPRING_MAIN_LAZY_INITIALIZATION: "true"
+      JAVA_OPTS: *bake-java-opts
+    deploy: *bake-deploy
+    healthcheck: *fast-health
+
+  gateway:
+    environment:
+      SPRING_MAIN_LAZY_INITIALIZATION: "true"
+      JAVA_OPTS: *bake-java-opts
+    deploy: *bake-deploy
+    healthcheck: *fast-health
+
+  # dev-service: 시딩을 오케스트레이션(이벤트 발행자)하므로 lazy-init 안전.
+  # base 에서 0.5cpu/512m 로 가장 조여져 있던 시딩 핵심 경로 → 완화 효과가 크다.
+  dev-service:
+    environment:
+      SPRING_MAIN_LAZY_INITIALIZATION: "true"
+      JAVA_OPTS: *bake-java-opts
+    deploy: *bake-deploy
+    healthcheck: *fast-health

@@ -2,7 +2,6 @@
 .github
 .gradle
 .idea
-build
 out
 this
 *.iml
@@ -11,3 +10,9 @@ this
 .env.*
 !.env.example
 README.md
+
+# 런타임 이미지는 사전 빌드된 부트 jar만 필요하다.
+# 소스/중간 산출물은 제외하고 build/libs 의 jar만 컨텍스트에 포함한다.
+**/src
+**/build/*
+!**/build/libs

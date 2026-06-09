@@ -1,0 +1,522 @@
+################################################################################
+# HelloCS — Production MSA Compose
+# 서비스: gateway | user-service | topic-service | quiz-service |
+#          grading-service | stt-service | interview-service |
+#          ranking-service | streak-service
+# 인프라: 서비스별 전용 Postgres, 공유 Redis/Mongo/RabbitMQ, Tempo, 모니터링 스택
+################################################################################
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-service-defaults: &service-defaults
+  restart: always
+  networks:
+    - backend
+  logging: *default-logging
+
+# ─────────────────────────────────────────────────────────────
+# 공유 인프라
+# ─────────────────────────────────────────────────────────────
+services:
+
+  rabbitmq:
+    <<: *service-defaults
+    image: rabbitmq:4.0-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    <<: *service-defaults
+    image: redis:7.4-alpine
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD}"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  mongo:
+    <<: *service-defaults
+    image: mongo:8.0
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGO_DB}
+    command: ["mongod", "--wiredTigerCacheSizeGB", "0.25"]
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test:
+        ["CMD-SHELL",
+         "mongosh --quiet --username $${MONGO_INITDB_ROOT_USERNAME} --password $${MONGO_INITDB_ROOT_PASSWORD} --authenticationDatabase admin --eval \"db.adminCommand('ping').ok\" | grep -q 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  tempo:
+    <<: *service-defaults
+    image: grafana/tempo:2.6.1
+    command: ["-config.file=/etc/tempo/tempo.yaml"]
+    volumes:
+      - ./ops/tempo/tempo.yaml:/etc/tempo/tempo.yaml:ro
+      - tempo-data:/var/tempo
+
+  # ─── 서비스별 전용 Postgres ───────────────────────────────
+
+  postgres-user:
+    <<: *service-defaults
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${USER_POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-user-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-topic:
+    <<: *service-defaults
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${TOPIC_POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-topic-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-quiz:
+    <<: *service-defaults
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${QUIZ_POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-quiz-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-interview:
+    <<: *service-defaults
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${INTERVIEW_POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-interview-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─────────────────────────────────────────────────────────────
+  # 마이크로서비스
+  # ─────────────────────────────────────────────────────────────
+
+  user-service:
+    <<: *service-defaults
+    build:
+      context: .
+      dockerfile: user/Dockerfile
+    image: deadlock-user-service:latest
+    env_file: .env.prod
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SERVER_PORT: 8081
+      MANAGEMENT_PORT: 8091
+      POSTGRES_HOST: postgres-user
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${USER_POSTGRES_DB}
+    depends_on:
+      postgres-user:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8091/actuator/health/readiness > /dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+
+  topic-service:
+    <<: *service-defaults
+    build:
+      context: .
+      dockerfile: topic/Dockerfile
+    image: deadlock-topic-service:latest
+    env_file: .env.prod
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SERVER_PORT: 8082
+      MANAGEMENT_PORT: 8092
+      POSTGRES_HOST: postgres-topic
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${TOPIC_POSTGRES_DB}
+    depends_on:
+      postgres-topic:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8092/actuator/health/readiness > /dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+
+  quiz-service:
+    <<: *service-defaults
+    build:
+      context: .
+      dockerfile: quiz/Dockerfile
+    image: deadlock-quiz-service:latest
+    env_file: .env.prod
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SERVER_PORT: 8083
+      MANAGEMENT_PORT: 8093
+      POSTGRES_HOST: postgres-quiz
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${QUIZ_POSTGRES_DB}
+      USER_SERVICE_URL: http://user-service:8081
+      TOPIC_SERVICE_URL: http://topic-service:8082
+      GRADING_SERVICE_URL: http://grading-service:8087
+    depends_on:
+      postgres-quiz:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+      topic-service:
+        condition: service_healthy
+      grading-service:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8093/actuator/health/readiness > /dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+
+  grading-service:
+    <<: *service-defaults
+    build:
+      context: .
+      dockerfile: grading/Dockerfile
+    image: deadlock-grading-service:latest
+    env_file: .env.prod
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SERVER_PORT: 8087
+      MANAGEMENT_PORT: 8097
+      TOPIC_SERVICE_URL: http://topic-service:8082
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      topic-service:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 384m
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8097/actuator/health/readiness > /dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+
+  stt-service:
+    <<: *service-defaults
+    build:
+      context: .
+      dockerfile: stt/Dockerfile
+    image: deadlock-stt-service:latest
+    env_file: .env.prod
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SERVER_PORT: 8088
+      MANAGEMENT_PORT: 8098
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8098/actuator/health/readiness > /dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+
+  interview-service:
+    <<: *service-defaults
+    build:
+      context: .
+      dockerfile: interview/Dockerfile
+    image: deadlock-interview-service:latest
+    env_file: .env.prod
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SERVER_PORT: 8084
+      MANAGEMENT_PORT: 8094
+      POSTGRES_HOST: postgres-interview
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${INTERVIEW_POSTGRES_DB}
+    depends_on:
+      postgres-interview:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8094/actuator/health/readiness > /dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+
+  ranking-service:
+    <<: *service-defaults
+    build:
+      context: .
+      dockerfile: ranking/Dockerfile
+    image: deadlock-ranking-service:latest
+    env_file: .env.prod
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SERVER_PORT: 8085
+      MANAGEMENT_PORT: 8095
+      USER_SERVICE_URL: http://user-service:8081
+    depends_on:
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 384m
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8095/actuator/health/readiness > /dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+
+  streak-service:
+    <<: *service-defaults
+    build:
+      context: .
+      dockerfile: streak/Dockerfile
+    image: deadlock-streak-service:latest
+    env_file: .env.prod
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SERVER_PORT: 8086
+      MANAGEMENT_PORT: 8096
+    depends_on:
+      mongo:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 384m
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8096/actuator/health/readiness > /dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+
+  gateway:
+    <<: *service-defaults
+    build:
+      context: .
+      dockerfile: gateway/Dockerfile
+    image: deadlock-gateway:latest
+    env_file: .env.prod
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      GATEWAY_SERVICE_PORT: 8080
+      MANAGEMENT_PORT: 8081
+      USER_SERVICE_HOST: user-service
+      USER_SERVICE_PORT: 8081
+      TOPIC_SERVICE_HOST: topic-service
+      TOPIC_SERVICE_PORT: 8082
+      QUIZ_SERVICE_HOST: quiz-service
+      QUIZ_SERVICE_PORT: 8083
+      GRADING_SERVICE_HOST: grading-service
+      GRADING_SERVICE_PORT: 8087
+      STT_SERVICE_HOST: stt-service
+      STT_SERVICE_PORT: 8088
+      INTERVIEW_SERVICE_HOST: interview-service
+      INTERVIEW_SERVICE_PORT: 8084
+      RANKING_SERVICE_HOST: ranking-service
+      RANKING_SERVICE_PORT: 8085
+      STREAK_SERVICE_HOST: streak-service
+      STREAK_SERVICE_PORT: 8086
+    ports:
+      - "8080:8080"
+    depends_on:
+      user-service:
+        condition: service_healthy
+      topic-service:
+        condition: service_healthy
+      quiz-service:
+        condition: service_healthy
+      grading-service:
+        condition: service_healthy
+      stt-service:
+        condition: service_healthy
+      interview-service:
+        condition: service_healthy
+      ranking-service:
+        condition: service_healthy
+      streak-service:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:${MANAGEMENT_PORT}/actuator/health/readiness > /dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+
+  # ─────────────────────────────────────────────────────────────
+  # 모니터링 스택
+  # ─────────────────────────────────────────────────────────────
+
+  prometheus:
+    <<: *service-defaults
+    image: prom/prometheus:v2.54.1
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-lifecycle"
+      - "--web.enable-remote-write-receiver"
+      - "--enable-feature=native-histograms"
+    volumes:
+      - ./ops/prometheus/prometheus.prod.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+
+  grafana:
+    <<: *service-defaults
+    image: grafana/grafana:11.2.2
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./ops/grafana/provisioning:/etc/grafana/provisioning:ro
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    restart: always
+    pid: host
+    network_mode: host
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+      - '--collector.systemd'
+    deploy:
+      resources:
+        limits:
+          memory: 64m
+    logging: *default-logging
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    restart: always
+    privileged: true
+    ports:
+      - "8082:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    networks:
+      - backend
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+    logging: *default-logging
+
+volumes:
+  rabbitmq-data:
+  redis-data:
+  mongo-data:
+  tempo-data:
+  prometheus-data:
+  grafana-data:
+  postgres-user-data:
+  postgres-topic-data:
+  postgres-quiz-data:
+  postgres-interview-data:
+
+networks:
+  backend:
+    driver: bridge

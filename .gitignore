@@ -36,9 +36,8 @@ out/
 ### VS Code ###
 .vscode/
 
-src/main/resources/application-dev.yaml
-src/main/resources/application-docker.yml
 .env
 .env.*
-.env.example
 .docker-compose.yml
+ops/perf/datasets/
+k6/results/

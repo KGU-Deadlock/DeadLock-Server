@@ -18,22 +18,37 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build image on bastion
+      - name: Build images on bastion
         shell: bash
         run: |
-          docker build -t deadlock-server:latest .
+          docker build -t deadlock-user-service:latest -f user/Dockerfile .
+          docker build -t deadlock-topic-service:latest -f topic/Dockerfile .
+          docker build -t deadlock-quiz-service:latest -f quiz/Dockerfile .
+          docker build -t deadlock-interview-service:latest -f interview/Dockerfile .
+          docker build -t deadlock-ranking-service:latest -f ranking/Dockerfile .
+          docker build -t deadlock-streak-service:latest -f streak/Dockerfile .
+          docker build -t deadlock-gateway:latest -f gateway/Dockerfile .
 
-      - name: Transfer image to backend
+      - name: Transfer images to backend
         shell: bash
         run: |
-          docker save deadlock-server:latest | gzip | \
-            ssh -o StrictHostKeyChecking=no ubuntu@192.168.123.102 \
-            "gunzip | docker load"
+          for img in \
+            deadlock-user-service:latest \
+            deadlock-topic-service:latest \
+            deadlock-quiz-service:latest \
+            deadlock-interview-service:latest \
+            deadlock-ranking-service:latest \
+            deadlock-streak-service:latest \
+            deadlock-gateway:latest; do
+            docker save "$img" | gzip | \
+              ssh -o StrictHostKeyChecking=no ubuntu@192.168.123.102 \
+              "gunzip | docker load"
+          done
 
       - name: Deploy on backend
         shell: bash
         run: |
-          ssh ubuntu@192.168.123.102 "cd ~/DeadLock-Server && docker compose up -d --no-build"
+          ssh ubuntu@192.168.123.102 "cd ~/DeadLock-Server && docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --no-build"
 
       - name: Notify Discord (success)
         if: success()
