@@ -1,0 +1,357 @@
+{
+  "title": "DB — Postgres · Mongo · Redis",
+  "uid": "hellocs-db",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "timezone": "browser",
+  "graphTooltip": 1,
+  "time": { "from": "now-1h", "to": "now" },
+  "tags": ["hellocs", "db"],
+  "templating": {
+    "list": [
+      {
+        "name": "service",
+        "label": "서비스",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": "label_values(hikaricp_connections_active, application)",
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "refresh": 2,
+        "sort": 1
+      },
+      {
+        "name": "db",
+        "label": "DB",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": "label_values(pg_stat_database_numbackends, datname)",
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".+",
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "refresh": 2,
+        "sort": 1
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "Postgres — 슬로우 쿼리",
+      "collapsed": false,
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 }
+    },
+    {
+      "id": 2,
+      "type": "table",
+      "title": "슬로우 쿼리 Top 20 (mean_exec_time ms)",
+      "gridPos": { "x": 0, "y": 1, "w": 24, "h": 10 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "topk(20, pg_stat_statements_mean_exec_time)",
+          "legendFormat": "{{query_preview}}",
+          "refId": "A",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "expr": "topk(20, rate(pg_stat_statements_calls_total[5m]))",
+          "legendFormat": "{{query_preview}}",
+          "refId": "B",
+          "instant": true,
+          "format": "table"
+        }
+      ],
+      "options": {
+        "sortBy": [{ "displayName": "Value #A", "desc": true }],
+        "footer": { "show": false }
+      },
+      "transformations": [
+        { "id": "merge", "options": {} },
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": { "Value #A": "Mean Exec (ms)", "Value #B": "Calls/s", "query_preview": "Query" }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Mean Exec (ms)" }, "properties": [{ "id": "unit", "value": "ms" }, { "id": "custom.displayMode", "value": "color-background" }, { "id": "thresholds", "value": { "mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 10}, {"color": "red", "value": 100}] } }, { "id": "color", "value": { "mode": "thresholds" } }] },
+          { "matcher": { "id": "byName", "options": "Calls/s" }, "properties": [{ "id": "unit", "value": "ops" }] }
+        ]
+      }
+    },
+
+    {
+      "id": 10,
+      "type": "row",
+      "title": "Connection Lifecycle",
+      "collapsed": false,
+      "gridPos": { "x": 0, "y": 11, "w": 24, "h": 1 }
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "Connection Acquire (대기시간) 분위수",
+      "gridPos": { "x": 0, "y": 12, "w": 12, "h": 7 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(hikaricp_connections_acquire_seconds_bucket{application=~\"$service\"}[5m])))",
+          "legendFormat": "p50",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(hikaricp_connections_acquire_seconds_bucket{application=~\"$service\"}[5m])))",
+          "legendFormat": "p95",
+          "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(hikaricp_connections_acquire_seconds_bucket{application=~\"$service\"}[5m])))",
+          "legendFormat": "p99",
+          "refId": "C"
+        }
+      ],
+      "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] } },
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "lineWidth": 1, "fillOpacity": 5 } } }
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "Connection Usage (트랜잭션 시간 프록시) 분위수",
+      "gridPos": { "x": 12, "y": 12, "w": 12, "h": 7 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(hikaricp_connections_usage_seconds_bucket{application=~\"$service\"}[5m])))",
+          "legendFormat": "p50",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(hikaricp_connections_usage_seconds_bucket{application=~\"$service\"}[5m])))",
+          "legendFormat": "p95",
+          "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(hikaricp_connections_usage_seconds_bucket{application=~\"$service\"}[5m])))",
+          "legendFormat": "p99",
+          "refId": "C"
+        }
+      ],
+      "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] } },
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "lineWidth": 1, "fillOpacity": 5 } } }
+    },
+
+    {
+      "id": 20,
+      "type": "row",
+      "title": "Postgres — 인프라",
+      "collapsed": false,
+      "gridPos": { "x": 0, "y": 19, "w": 24, "h": 1 }
+    },
+    {
+      "id": 21,
+      "type": "timeseries",
+      "title": "Active Connections",
+      "gridPos": { "x": 0, "y": 20, "w": 6, "h": 7 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum by (datname) (pg_stat_database_numbackends{datname=~\"$db\"})",
+          "legendFormat": "{{datname}}",
+          "refId": "A"
+        }
+      ],
+      "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "list", "placement": "bottom" } },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "lineWidth": 1, "fillOpacity": 10 } } }
+    },
+    {
+      "id": 22,
+      "type": "timeseries",
+      "title": "Transaction Rate (commit / rollback)",
+      "gridPos": { "x": 6, "y": 20, "w": 6, "h": 7 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum by (datname) (rate(pg_stat_database_xact_commit{datname=~\"$db\"}[1m]))",
+          "legendFormat": "commit/s / {{datname}}",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (datname) (rate(pg_stat_database_xact_rollback{datname=~\"$db\"}[1m]))",
+          "legendFormat": "rollback/s / {{datname}}",
+          "refId": "B"
+        }
+      ],
+      "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "list", "placement": "bottom" } },
+      "fieldConfig": { "defaults": { "unit": "ops", "custom": { "lineWidth": 1, "fillOpacity": 5 } } }
+    },
+    {
+      "id": 23,
+      "type": "timeseries",
+      "title": "Buffer Cache Hit Ratio",
+      "gridPos": { "x": 12, "y": 20, "w": 6, "h": 7 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum by (datname) (rate(pg_stat_database_blks_hit{datname=~\"$db\"}[5m])) / (sum by (datname) (rate(pg_stat_database_blks_hit{datname=~\"$db\"}[5m])) + sum by (datname) (rate(pg_stat_database_blks_read{datname=~\"$db\"}[5m])))",
+          "legendFormat": "{{datname}}",
+          "refId": "A"
+        }
+      ],
+      "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "list", "placement": "bottom" } },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1, "custom": { "lineWidth": 1, "fillOpacity": 10 } } }
+    },
+    {
+      "id": 24,
+      "type": "timeseries",
+      "title": "Deadlocks",
+      "gridPos": { "x": 18, "y": 20, "w": 6, "h": 7 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum by (datname) (rate(pg_stat_database_deadlocks{datname=~\"$db\"}[5m]))",
+          "legendFormat": "{{datname}}",
+          "refId": "A"
+        }
+      ],
+      "options": { "tooltip": { "mode": "single" }, "legend": { "displayMode": "list", "placement": "bottom" } },
+      "fieldConfig": { "defaults": { "unit": "ops", "custom": { "lineWidth": 1, "fillOpacity": 10 }, "color": { "fixedColor": "red", "mode": "fixed" } } }
+    },
+    {
+      "id": 25,
+      "type": "timeseries",
+      "title": "Temp Files 생성량 (DB별)",
+      "gridPos": { "x": 0, "y": 27, "w": 24, "h": 6 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum by (datname) (rate(pg_stat_database_temp_bytes{datname=~\"$db\"}[5m]))",
+          "legendFormat": "{{datname}}",
+          "refId": "A"
+        }
+      ],
+      "options": { "tooltip": { "mode": "multi", "sort": "desc" }, "legend": { "displayMode": "list", "placement": "bottom" } },
+      "fieldConfig": { "defaults": { "unit": "Bps", "custom": { "lineWidth": 1, "fillOpacity": 5 } } }
+    },
+
+    {
+      "id": 30,
+      "type": "row",
+      "title": "MongoDB",
+      "collapsed": false,
+      "gridPos": { "x": 0, "y": 33, "w": 24, "h": 1 }
+    },
+    {
+      "id": 31,
+      "type": "timeseries",
+      "title": "MongoDB Connections",
+      "gridPos": { "x": 0, "y": 34, "w": 8, "h": 6 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "mongodb_connections{state=\"current\"}",
+          "legendFormat": "current",
+          "refId": "A"
+        },
+        {
+          "expr": "mongodb_connections{state=\"available\"}",
+          "legendFormat": "available",
+          "refId": "B"
+        }
+      ],
+      "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "list", "placement": "bottom" } },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "lineWidth": 1, "fillOpacity": 5 } } }
+    },
+    {
+      "id": 32,
+      "type": "timeseries",
+      "title": "MongoDB Op Rate",
+      "gridPos": { "x": 8, "y": 34, "w": 8, "h": 6 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "rate(mongodb_ss_opcounters[1m])",
+          "legendFormat": "{{type}}",
+          "refId": "A"
+        }
+      ],
+      "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "list", "placement": "bottom" } },
+      "fieldConfig": { "defaults": { "unit": "ops", "custom": { "lineWidth": 1, "fillOpacity": 5 } } }
+    },
+
+    {
+      "id": 40,
+      "type": "row",
+      "title": "Redis",
+      "collapsed": false,
+      "gridPos": { "x": 0, "y": 40, "w": 24, "h": 1 }
+    },
+    {
+      "id": 41,
+      "type": "timeseries",
+      "title": "Redis Clients & Memory",
+      "gridPos": { "x": 0, "y": 41, "w": 8, "h": 6 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "redis_connected_clients",
+          "legendFormat": "clients",
+          "refId": "A"
+        },
+        {
+          "expr": "redis_memory_used_bytes",
+          "legendFormat": "memory used",
+          "refId": "B"
+        }
+      ],
+      "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "list", "placement": "bottom" } },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "custom": { "lineWidth": 1, "fillOpacity": 5 } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "memory used" }, "properties": [{ "id": "unit", "value": "bytes" }, { "id": "custom.axisPlacement", "value": "right" }] }
+        ]
+      }
+    },
+    {
+      "id": 42,
+      "type": "timeseries",
+      "title": "Redis Cache Hit Ratio",
+      "gridPos": { "x": 8, "y": 41, "w": 8, "h": 6 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "rate(redis_keyspace_hits_total[5m]) / (rate(redis_keyspace_hits_total[5m]) + rate(redis_keyspace_misses_total[5m]))",
+          "legendFormat": "hit ratio",
+          "refId": "A"
+        }
+      ],
+      "options": { "tooltip": { "mode": "single" }, "legend": { "displayMode": "list", "placement": "bottom" } },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1, "custom": { "lineWidth": 1, "fillOpacity": 10 } } }
+    },
+    {
+      "id": 43,
+      "type": "timeseries",
+      "title": "Redis Command Rate",
+      "gridPos": { "x": 16, "y": 41, "w": 8, "h": 6 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "topk(5, rate(redis_commands_total[1m]))",
+          "legendFormat": "{{cmd}}",
+          "refId": "A"
+        }
+      ],
+      "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "list", "placement": "bottom" } },
+      "fieldConfig": { "defaults": { "unit": "ops", "custom": { "lineWidth": 1, "fillOpacity": 5 } } }
+    }
+  ]
+}

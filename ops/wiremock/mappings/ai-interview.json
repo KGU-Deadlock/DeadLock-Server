@@ -1,0 +1,35 @@
+{
+  "mappings": [
+    {
+      "name": "AI Interview - feedback",
+      "request": {
+        "method": "POST",
+        "urlPath": "/interview/feedback"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "overall_score": 75,
+          "question_feedbacks": [
+            {
+              "question_number": 1,
+              "score": 80,
+              "feedback": "답변이 명확하고 구체적입니다.",
+              "improvement": "예시를 더 추가하면 좋겠습니다."
+            },
+            {
+              "question_number": 2,
+              "score": 70,
+              "feedback": "기본 개념은 맞지만 깊이가 부족합니다.",
+              "improvement": "내부 동작 원리까지 설명하면 좋겠습니다."
+            }
+          ]
+        },
+        "fixedDelayMilliseconds": 500
+      }
+    }
+  ]
+}

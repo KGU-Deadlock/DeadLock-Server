@@ -1,0 +1,138 @@
+pg_stat_io:
+  query: |
+    SELECT
+      backend_type,
+      object,
+      context,
+      reads,
+      writes,
+      hits,
+      evictions,
+      fsyncs,
+      read_time,
+      write_time,
+      fsync_time
+    FROM pg_stat_io
+    WHERE reads + writes + hits > 0
+      AND object IN ('relation', 'index')
+  metrics:
+    - backend_type:
+        usage: LABEL
+        description: "Backend type"
+    - object:
+        usage: LABEL
+        description: "Object type (relation or index)"
+    - context:
+        usage: LABEL
+        description: "I/O context (normal, vacuum, etc.)"
+    - reads:
+        usage: COUNTER
+        description: "Blocks read from storage"
+    - writes:
+        usage: COUNTER
+        description: "Blocks written to storage"
+    - hits:
+        usage: COUNTER
+        description: "Blocks found in shared buffer pool"
+    - evictions:
+        usage: COUNTER
+        description: "Blocks evicted from shared buffer pool"
+    - fsyncs:
+        usage: COUNTER
+        description: "fsync calls issued"
+    - read_time:
+        usage: COUNTER
+        description: "Cumulative read time (ms)"
+    - write_time:
+        usage: COUNTER
+        description: "Cumulative write time (ms)"
+    - fsync_time:
+        usage: COUNTER
+        description: "Cumulative fsync time (ms)"
+
+pg_bgwriter:
+  query: |
+    SELECT
+      buffers_clean,
+      maxwritten_clean,
+      buffers_alloc
+    FROM pg_stat_bgwriter
+  metrics:
+    - buffers_clean:
+        usage: COUNTER
+        description: "Buffers written by bgwriter"
+    - maxwritten_clean:
+        usage: COUNTER
+        description: "Times bgwriter stopped cleaning scan due to too many buffers written"
+    - buffers_alloc:
+        usage: COUNTER
+        description: "Buffers allocated"
+
+pg_checkpointer:
+  query: |
+    SELECT
+      num_timed,
+      num_requested,
+      write_time,
+      sync_time,
+      buffers_written
+    FROM pg_stat_checkpointer
+  metrics:
+    - num_timed:
+        usage: COUNTER
+        description: "Scheduled checkpoints performed"
+    - num_requested:
+        usage: COUNTER
+        description: "Requested checkpoints performed"
+    - write_time:
+        usage: COUNTER
+        description: "Checkpoint write phase time (ms)"
+    - sync_time:
+        usage: COUNTER
+        description: "Checkpoint sync phase time (ms)"
+    - buffers_written:
+        usage: COUNTER
+        description: "Buffers written during checkpoints"
+
+pg_stat_statements:
+  query: |
+    SELECT
+      queryid::text                                                    AS queryid,
+      LEFT(regexp_replace(query, '\s+', ' ', 'g'), 80)                AS query_preview,
+      calls,
+      mean_exec_time,
+      stddev_exec_time,
+      total_exec_time,
+      rows
+    FROM pg_stat_statements
+    WHERE calls > 5
+      AND mean_exec_time > 0.5
+      AND query NOT ILIKE '%pg_stat%'
+      AND query NOT ILIKE '%pg_database%'
+      AND query NOT ILIKE '%pg_settings%'
+      AND query NOT ILIKE '%pg_get_userbyid%'
+      AND query NOT ILIKE '%current_database()%'
+    ORDER BY mean_exec_time DESC
+    LIMIT 20
+  metrics:
+    - queryid:
+        usage: LABEL
+        description: "Query fingerprint ID"
+    - query_preview:
+        usage: LABEL
+        description: "Query text (first 80 chars, whitespace normalized)"
+    - calls:
+        usage: COUNTER
+        description: "Total number of executions"
+    - mean_exec_time:
+        usage: GAUGE
+        description: "Mean execution time (ms)"
+    - stddev_exec_time:
+        usage: GAUGE
+        description: "Execution time stddev (ms)"
+    - total_exec_time:
+        usage: COUNTER
+        description: "Total execution time (ms)"
+    - rows:
+        usage: COUNTER
+        description: "Total rows retrieved or affected"

@@ -2,14 +2,158 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
 
+rule_files:
+  - "rules/*.yml"
+
 scrape_configs:
   - job_name: prometheus
     static_configs:
       - targets:
           - prometheus:9090
 
-  - job_name: hellocs-app
+  # ─────────────────────────────────────────────────────────────
+  # 앱 잡 (9개) — management 포트, /actuator/prometheus
+  # job → service 라벨 relabel (application 라벨은 micrometer 자동 부여)
+  # ─────────────────────────────────────────────────────────────
+
+  - job_name: gateway
     metrics_path: /actuator/prometheus
     static_configs:
       - targets:
-          - app:8081
+          - gateway:8081
+    relabel_configs:
+      - source_labels: [job]
+        target_label: service
+
+  - job_name: user-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - user-service:8091
+    relabel_configs:
+      - source_labels: [job]
+        target_label: service
+
+  - job_name: topic-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - topic-service:8092
+    relabel_configs:
+      - source_labels: [job]
+        target_label: service
+
+  - job_name: quiz-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - quiz-service:8093
+    relabel_configs:
+      - source_labels: [job]
+        target_label: service
+
+  - job_name: interview-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - interview-service:8094
+    relabel_configs:
+      - source_labels: [job]
+        target_label: service
+
+  - job_name: ranking-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - ranking-service:8095
+    relabel_configs:
+      - source_labels: [job]
+        target_label: service
+
+  - job_name: streak-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - streak-service:8096
+    relabel_configs:
+      - source_labels: [job]
+        target_label: service
+
+  - job_name: grading-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - grading-service:8097
+    relabel_configs:
+      - source_labels: [job]
+        target_label: service
+
+  - job_name: stt-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - stt-service:8098
+    relabel_configs:
+      - source_labels: [job]
+        target_label: service
+
+  # ─────────────────────────────────────────────────────────────
+  # Postgres 잡 (4개) — DB당 exporter 1개 (모두 컨테이너 내부 9187)
+  # ─────────────────────────────────────────────────────────────
+
+  - job_name: postgres-user
+    static_configs:
+      - targets:
+          - postgres_exporter_user:9187
+        labels:
+          db: user
+
+  - job_name: postgres-topic
+    static_configs:
+      - targets:
+          - postgres_exporter_topic:9187
+        labels:
+          db: topic
+
+  - job_name: postgres-quiz
+    static_configs:
+      - targets:
+          - postgres_exporter_quiz:9187
+        labels:
+          db: quiz
+
+  - job_name: postgres-interview
+    static_configs:
+      - targets:
+          - postgres_exporter_interview:9187
+        labels:
+          db: interview
+
+  # ─────────────────────────────────────────────────────────────
+  # 인프라 잡
+  # ─────────────────────────────────────────────────────────────
+
+  - job_name: rabbitmq
+    static_configs:
+      - targets:
+          - rabbitmq:15692
+
+  - job_name: mongodb
+    static_configs:
+      - targets:
+          - mongodb_exporter:9216
+
+  - job_name: redis
+    static_configs:
+      - targets:
+          - redis_exporter:9121
+
+  - job_name: cadvisor
+    static_configs:
+      - targets:
+          - cadvisor:8080
+
+  - job_name: node-exporter
+    static_configs:
+      - targets:
+          - node-exporter:9100

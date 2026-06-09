@@ -1,0 +1,81 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - "rules/*.yml"
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets:
+          - prometheus:9090
+
+  - job_name: gateway
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - gateway:8081
+
+  - job_name: user-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - user-service:8091
+
+  - job_name: topic-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - topic-service:8092
+
+  - job_name: quiz-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - quiz-service:8093
+
+  - job_name: interview-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - interview-service:8094
+
+  - job_name: ranking-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - ranking-service:8095
+
+  - job_name: streak-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - streak-service:8096
+
+  - job_name: grading-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - grading-service:8097
+
+  - job_name: stt-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - stt-service:8098
+
+  - job_name: rabbitmq
+    static_configs:
+      - targets:
+          - rabbitmq:15692
+
+  - job_name: cadvisor
+    static_configs:
+      - targets:
+          - cadvisor:8080
+
+  - job_name: node-exporter
+    static_configs:
+      - targets:
+          - node-exporter:9100

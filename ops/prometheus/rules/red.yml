@@ -1,0 +1,37 @@
+groups:
+  - name: red
+    interval: 30s
+    rules:
+      # URI/method/outcome별 RPS — 대시보드 timeseries에서 직접 사용
+      - record: "job:http_request:rate1m"
+        expr: >
+          sum by (uri, method, outcome, status, application)
+          (rate(http_server_requests_seconds_count[1m]))
+
+      # URI별 서버 에러율(5xx) — 에러율 패널용
+      - record: "uri:http_request_server_error_ratio:rate5m"
+        expr: >
+          (
+            sum by (uri, application) (rate(http_server_requests_seconds_count{outcome="SERVER_ERROR"}[5m]))
+            or
+            sum by (uri, application) (rate(http_server_requests_seconds_count[5m]) * 0)
+          )
+          /
+          sum by (uri, application) (rate(http_server_requests_seconds_count[5m]))
+
+      # URI별 클라이언트 에러율(4xx)
+      - record: "uri:http_request_client_error_ratio:rate5m"
+        expr: >
+          (
+            sum by (uri, application) (rate(http_server_requests_seconds_count{outcome="CLIENT_ERROR"}[5m]))
+            or
+            sum by (uri, application) (rate(http_server_requests_seconds_count[5m]) * 0)
+          )
+          /
+          sum by (uri, application) (rate(http_server_requests_seconds_count[5m]))
+
+      # histogram_quantile 계산용 bucket rate 사전 집계 (le 포함 필수)
+      - record: "uri:http_request_duration_seconds_bucket:rate5m"
+        expr: >
+          sum by (uri, le, application)
+          (rate(http_server_requests_seconds_bucket[5m]))

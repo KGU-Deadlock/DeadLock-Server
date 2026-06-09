@@ -1,0 +1,24 @@
+groups:
+  - name: resource
+    interval: 30s
+    rules:
+      # HikariCP 풀 사용률 (active / max) — 서비스·풀 단위
+      - record: "instance:hikari_pool:utilization"
+        expr: >
+          sum by (application, pool) (hikaricp_connections_active)
+          /
+          sum by (application, pool) (hikaricp_connections_max)
+
+      # Tomcat 스레드 사용률 (busy / max) — 서비스 단위
+      - record: "instance:tomcat_thread:utilization"
+        expr: >
+          sum by (application, name) (tomcat_threads_busy_threads)
+          /
+          sum by (application, name) (tomcat_threads_config_max_threads)
+
+      # JVM Heap 전체 사용률
+      - record: "instance:jvm_heap:utilization"
+        expr: >
+          sum by (application) (jvm_memory_used_bytes{area="heap"})
+          /
+          sum by (application) (jvm_memory_max_bytes{area="heap"})

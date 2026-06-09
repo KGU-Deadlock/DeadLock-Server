@@ -1,0 +1,24 @@
+{
+  "mappings": [
+    {
+      "name": "AI Grading - evaluate",
+      "request": {
+        "method": "POST",
+        "urlPath": "/api/feedback/evaluate"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "score": 80,
+          "missing_keywords": ["keyword1", "keyword2"],
+          "improved_answer": "더 나은 답변 예시입니다.",
+          "message": "정답과 유사하지만 일부 키워드가 누락되었습니다."
+        },
+        "fixedDelayMilliseconds": 200
+      }
+    }
+  ]
+}

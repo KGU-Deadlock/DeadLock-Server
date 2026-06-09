@@ -1,0 +1,367 @@
+{
+  "title": "Resource — JVM · Tomcat · HikariCP",
+  "uid": "hellocs-resource",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "timezone": "browser",
+  "graphTooltip": 1,
+  "time": { "from": "now-1h", "to": "now" },
+  "tags": ["hellocs", "resource"],
+  "templating": {
+    "list": [
+      {
+        "name": "service",
+        "label": "서비스",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": "label_values(jvm_memory_used_bytes, application)",
+        "multi": false,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "refresh": 2,
+        "sort": 1
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "JVM Memory",
+      "collapsed": false,
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Heap 영역별 사용량 (G1)",
+      "gridPos": { "x": 0, "y": 1, "w": 16, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "jvm_memory_used_bytes{application=~\"$service\", area=\"heap\"}",
+          "legendFormat": "{{id}}",
+          "refId": "A"
+        },
+        {
+          "expr": "jvm_memory_committed_bytes{application=~\"$service\", area=\"heap\"}",
+          "legendFormat": "committed / {{id}}",
+          "refId": "B"
+        }
+      ],
+      "options": { "tooltip": { "mode": "multi", "sort": "desc" }, "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max", "lastNotNull"] } },
+      "fieldConfig": { "defaults": { "unit": "bytes", "custom": { "lineWidth": 1, "fillOpacity": 10 } } }
+    },
+    {
+      "id": 3,
+      "type": "gauge",
+      "title": "Heap 사용률",
+      "gridPos": { "x": 16, "y": 1, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "instance:jvm_heap:utilization{application=~\"$service\"}",
+          "legendFormat": "heap %",
+          "refId": "A"
+        }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "showThresholdLabels": false },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit", "min": 0, "max": 1,
+          "thresholds": { "mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 0.7}, {"color": "red", "value": 0.85}] },
+          "color": { "mode": "thresholds" }
+        }
+      }
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Non-Heap (Metaspace)",
+      "gridPos": { "x": 16, "y": 5, "w": 8, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "jvm_memory_used_bytes{application=~\"$service\", area=\"nonheap\", id=~\".*[Mm]eta.*\"}",
+          "legendFormat": "used",
+          "refId": "A"
+        },
+        {
+          "expr": "jvm_memory_committed_bytes{application=~\"$service\", area=\"nonheap\", id=~\".*[Mm]eta.*\"}",
+          "legendFormat": "committed",
+          "refId": "B"
+        }
+      ],
+      "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "list", "placement": "bottom" } },
+      "fieldConfig": { "defaults": { "unit": "bytes", "custom": { "lineWidth": 1, "fillOpacity": 5 } } }
+    },
+
+    {
+      "id": 10,
+      "type": "row",
+      "title": "JVM Threads & GC",
+      "collapsed": false,
+      "gridPos": { "x": 0, "y": 9, "w": 24, "h": 1 }
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "스레드 상태별",
+      "gridPos": { "x": 0, "y": 10, "w": 10, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "jvm_threads_states_threads{application=~\"$service\"}",
+          "legendFormat": "{{state}}",
+          "refId": "A"
+        },
+        {
+          "expr": "jvm_threads_live_threads{application=~\"$service\"}",
+          "legendFormat": "total live",
+          "refId": "B"
+        }
+      ],
+      "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max", "lastNotNull"] } },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "lineWidth": 1, "fillOpacity": 5 } } }
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "GC Pause (p95, rate)",
+      "gridPos": { "x": 10, "y": 10, "w": 7, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (gc, le) (rate(jvm_gc_pause_seconds_bucket{application=~\"$service\"}[5m])))",
+          "legendFormat": "p95 / {{gc}}",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(jvm_gc_pause_seconds_count{application=~\"$service\"}[1m])",
+          "legendFormat": "GC/s / {{gc}}",
+          "refId": "B"
+        }
+      ],
+      "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] } },
+      "fieldConfig": {
+        "defaults": { "custom": { "lineWidth": 1, "fillOpacity": 5 } },
+        "overrides": [
+          { "matcher": { "id": "byNamePattern", "options": "GC/s.*" }, "properties": [{ "id": "unit", "value": "ops" }, { "id": "custom.axisPlacement", "value": "right" }] },
+          { "matcher": { "id": "byNamePattern", "options": "p95.*" }, "properties": [{ "id": "unit", "value": "s" }] }
+        ]
+      }
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "GC 메모리 Promoted / Allocated",
+      "gridPos": { "x": 17, "y": 10, "w": 7, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "rate(jvm_gc_memory_promoted_bytes_total{application=~\"$service\"}[1m])",
+          "legendFormat": "promoted/s",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(jvm_gc_memory_allocated_bytes_total{application=~\"$service\"}[1m])",
+          "legendFormat": "allocated/s",
+          "refId": "B"
+        }
+      ],
+      "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "list", "placement": "bottom" } },
+      "fieldConfig": { "defaults": { "unit": "Bps", "custom": { "lineWidth": 1, "fillOpacity": 5 } } }
+    },
+
+    {
+      "id": 20,
+      "type": "row",
+      "title": "Tomcat",
+      "collapsed": false,
+      "gridPos": { "x": 0, "y": 18, "w": 24, "h": 1 }
+    },
+    {
+      "id": 21,
+      "type": "timeseries",
+      "title": "Tomcat 스레드 (busy / current / max)",
+      "gridPos": { "x": 0, "y": 19, "w": 16, "h": 7 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "tomcat_threads_busy_threads{application=~\"$service\"}",
+          "legendFormat": "busy",
+          "refId": "A"
+        },
+        {
+          "expr": "tomcat_threads_current_threads{application=~\"$service\"}",
+          "legendFormat": "current",
+          "refId": "B"
+        },
+        {
+          "expr": "tomcat_threads_config_max_threads{application=~\"$service\"}",
+          "legendFormat": "max",
+          "refId": "C"
+        }
+      ],
+      "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max", "lastNotNull"] } },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "lineWidth": 1, "fillOpacity": 5 } } }
+    },
+    {
+      "id": 22,
+      "type": "gauge",
+      "title": "Tomcat 스레드 사용률",
+      "gridPos": { "x": 16, "y": 19, "w": 4, "h": 7 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "instance:tomcat_thread:utilization{application=~\"$service\"}",
+          "legendFormat": "{{application}}",
+          "refId": "A"
+        }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit", "min": 0, "max": 1,
+          "thresholds": { "mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 0.7}, {"color": "red", "value": 0.9}] },
+          "color": { "mode": "thresholds" }
+        }
+      }
+    },
+
+    {
+      "id": 30,
+      "type": "row",
+      "title": "HikariCP",
+      "collapsed": false,
+      "gridPos": { "x": 0, "y": 26, "w": 24, "h": 1 }
+    },
+    {
+      "id": 31,
+      "type": "timeseries",
+      "title": "커넥션 상태 (active / idle / pending)",
+      "gridPos": { "x": 0, "y": 27, "w": 12, "h": 7 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "hikaricp_connections_active{application=~\"$service\"}",
+          "legendFormat": "active",
+          "refId": "A"
+        },
+        {
+          "expr": "hikaricp_connections_idle{application=~\"$service\"}",
+          "legendFormat": "idle",
+          "refId": "B"
+        },
+        {
+          "expr": "hikaricp_connections_pending{application=~\"$service\"}",
+          "legendFormat": "pending",
+          "refId": "C"
+        },
+        {
+          "expr": "hikaricp_connections_max{application=~\"$service\"}",
+          "legendFormat": "max",
+          "refId": "D"
+        }
+      ],
+      "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max", "lastNotNull"] } },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "custom": { "lineWidth": 1, "fillOpacity": 5 } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "pending" }, "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "max" }, "properties": [{ "id": "custom.lineStyle", "value": { "fill": "dash" } }] }
+        ]
+      }
+    },
+    {
+      "id": 32,
+      "type": "timeseries",
+      "title": "Connection Acquire p95 / Usage p95",
+      "gridPos": { "x": 12, "y": 27, "w": 8, "h": 7 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(hikaricp_connections_acquire_seconds_bucket{application=~\"$service\"}[5m])))",
+          "legendFormat": "acquire p95",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(hikaricp_connections_usage_seconds_bucket{application=~\"$service\"}[5m])))",
+          "legendFormat": "usage p95",
+          "refId": "B"
+        }
+      ],
+      "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "list", "placement": "bottom" } },
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "lineWidth": 1, "fillOpacity": 5 } } }
+    },
+    {
+      "id": 33,
+      "type": "gauge",
+      "title": "Pool 사용률",
+      "gridPos": { "x": 20, "y": 27, "w": 4, "h": 7 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "instance:hikari_pool:utilization{application=~\"$service\"}",
+          "legendFormat": "{{application}} / {{pool}}",
+          "refId": "A"
+        }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit", "min": 0, "max": 1,
+          "thresholds": { "mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 0.7}, {"color": "red", "value": 0.9}] },
+          "color": { "mode": "thresholds" }
+        }
+      }
+    },
+
+    {
+      "id": 40,
+      "type": "row",
+      "title": "Process / Container",
+      "collapsed": false,
+      "gridPos": { "x": 0, "y": 34, "w": 24, "h": 1 }
+    },
+    {
+      "id": 41,
+      "type": "timeseries",
+      "title": "프로세스 CPU 사용률",
+      "gridPos": { "x": 0, "y": 35, "w": 12, "h": 7 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "process_cpu_usage{application=~\"$service\"}",
+          "legendFormat": "process CPU",
+          "refId": "A"
+        }
+      ],
+      "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "list", "placement": "bottom" } },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1, "custom": { "lineWidth": 1, "fillOpacity": 10 } } }
+    },
+    {
+      "id": 42,
+      "type": "timeseries",
+      "title": "Container CPU CFS Throttle",
+      "gridPos": { "x": 12, "y": 35, "w": 12, "h": 7 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "rate(container_cpu_cfs_throttled_seconds_total{name=~\"(gateway|user-service|topic-service|quiz-service|interview-service|ranking-service|streak-service|grading-service|stt-service)\"}[1m])",
+          "legendFormat": "throttled / {{name}}",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(container_cpu_cfs_periods_total{name=~\"(gateway|user-service|topic-service|quiz-service|interview-service|ranking-service|streak-service|grading-service|stt-service)\"}[1m])",
+          "legendFormat": "periods / {{name}}",
+          "refId": "B"
+        }
+      ],
+      "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] } },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "lineWidth": 1, "fillOpacity": 5 } } }
+    }
+  ]
+}

@@ -1,0 +1,317 @@
+{
+  "title": "RED — Requests",
+  "uid": "hellocs-red",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "timezone": "browser",
+  "graphTooltip": 1,
+  "time": { "from": "now-1h", "to": "now" },
+  "tags": ["hellocs", "red"],
+  "templating": {
+    "list": [
+      {
+        "name": "service",
+        "label": "서비스",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": "label_values(http_server_requests_seconds_count, application)",
+        "multi": false,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "refresh": 2,
+        "sort": 1
+      },
+      {
+        "name": "uri",
+        "label": "URI",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": "label_values(http_server_requests_seconds_count{application=~\"$service\"}, uri)",
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".+",
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "refresh": 2,
+        "sort": 1
+      },
+      {
+        "name": "method",
+        "label": "Method",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": "label_values(http_server_requests_seconds_count{application=~\"$service\"}, method)",
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".+",
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "refresh": 2,
+        "sort": 1
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "Overview",
+      "collapsed": false,
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "전체 RPS",
+      "gridPos": { "x": 0, "y": 1, "w": 6, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum(rate(http_server_requests_seconds_count{application=~\"$service\"}[1m]))",
+          "legendFormat": "RPS",
+          "refId": "A"
+        }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "colorMode": "background", "graphMode": "area" },
+      "fieldConfig": {
+        "defaults": { "unit": "reqps", "thresholds": { "mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 50}, {"color": "red", "value": 200}] }, "color": { "mode": "thresholds" } }
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "5xx 에러율",
+      "gridPos": { "x": 6, "y": 1, "w": 6, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum(rate(http_server_requests_seconds_count{application=~\"$service\",outcome=\"SERVER_ERROR\"}[5m])) / sum(rate(http_server_requests_seconds_count{application=~\"$service\"}[5m]))",
+          "legendFormat": "5xx ratio",
+          "refId": "A"
+        }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "colorMode": "background", "graphMode": "none" },
+      "fieldConfig": {
+        "defaults": { "unit": "percentunit", "thresholds": { "mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 0.01}, {"color": "red", "value": 0.05}] }, "color": { "mode": "thresholds" } }
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "전체 p95 응답시간",
+      "gridPos": { "x": 12, "y": 1, "w": 6, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{application=~\"$service\"}[5m])))",
+          "legendFormat": "p95",
+          "refId": "A"
+        }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "colorMode": "background", "graphMode": "none" },
+      "fieldConfig": {
+        "defaults": { "unit": "s", "thresholds": { "mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 0.5}, {"color": "red", "value": 1.0}] }, "color": { "mode": "thresholds" } }
+      }
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "서비스 헬스 (9서비스 UP/DOWN)",
+      "gridPos": { "x": 18, "y": 1, "w": 6, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "up{job=~\"gateway|user-service|topic-service|quiz-service|interview-service|ranking-service|streak-service|grading-service|stt-service\"}",
+          "legendFormat": "{{job}}",
+          "refId": "A"
+        }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "colorMode": "background", "graphMode": "none", "textMode": "value_and_name" },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "mappings": [{ "type": "value", "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "UP", "color": "green" } } }], "thresholds": { "mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}] }, "color": { "mode": "thresholds" } }
+      }
+    },
+
+    {
+      "id": 10,
+      "type": "row",
+      "title": "URI별 RPS",
+      "collapsed": false,
+      "gridPos": { "x": 0, "y": 5, "w": 24, "h": 1 }
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "URI별 RPS (top 15)",
+      "gridPos": { "x": 0, "y": 6, "w": 24, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "topk(15, sum by (uri) (job:http_request:rate1m{application=~\"$service\", uri=~\"$uri\", method=~\"$method\"}))",
+          "legendFormat": "{{uri}}",
+          "refId": "A"
+        }
+      ],
+      "options": { "tooltip": { "mode": "multi", "sort": "desc" }, "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max", "lastNotNull"] } },
+      "fieldConfig": {
+        "defaults": { "unit": "reqps", "custom": { "lineWidth": 1, "fillOpacity": 5 } }
+      }
+    },
+
+    {
+      "id": 20,
+      "type": "row",
+      "title": "URI별 응답시간 (Latency)",
+      "collapsed": false,
+      "gridPos": { "x": 0, "y": 14, "w": 24, "h": 1 }
+    },
+    {
+      "id": 21,
+      "type": "timeseries",
+      "title": "p50 응답시간",
+      "gridPos": { "x": 0, "y": 15, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, uri:http_request_duration_seconds_bucket:rate5m{application=~\"$service\", uri=~\"$uri\"})",
+          "legendFormat": "{{uri}}",
+          "refId": "A"
+        }
+      ],
+      "options": { "tooltip": { "mode": "multi", "sort": "desc" }, "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] } },
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "lineWidth": 1, "fillOpacity": 3 } } }
+    },
+    {
+      "id": 22,
+      "type": "timeseries",
+      "title": "p95 응답시간",
+      "gridPos": { "x": 8, "y": 15, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, uri:http_request_duration_seconds_bucket:rate5m{application=~\"$service\", uri=~\"$uri\"})",
+          "legendFormat": "{{uri}}",
+          "refId": "A"
+        }
+      ],
+      "options": { "tooltip": { "mode": "multi", "sort": "desc" }, "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] } },
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "lineWidth": 1, "fillOpacity": 3 } } }
+    },
+    {
+      "id": 23,
+      "type": "timeseries",
+      "title": "p99 응답시간",
+      "gridPos": { "x": 16, "y": 15, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, uri:http_request_duration_seconds_bucket:rate5m{application=~\"$service\", uri=~\"$uri\"})",
+          "legendFormat": "{{uri}}",
+          "refId": "A"
+        }
+      ],
+      "options": { "tooltip": { "mode": "multi", "sort": "desc" }, "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] } },
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "lineWidth": 1, "fillOpacity": 3 } } }
+    },
+
+    {
+      "id": 30,
+      "type": "row",
+      "title": "URI별 에러율",
+      "collapsed": false,
+      "gridPos": { "x": 0, "y": 23, "w": 24, "h": 1 }
+    },
+    {
+      "id": 31,
+      "type": "timeseries",
+      "title": "4xx 에러율 (URI별)",
+      "gridPos": { "x": 0, "y": 24, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "uri:http_request_client_error_ratio:rate5m{application=~\"$service\", uri=~\"$uri\"}",
+          "legendFormat": "{{uri}}",
+          "refId": "A"
+        }
+      ],
+      "options": { "tooltip": { "mode": "multi", "sort": "desc" }, "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max", "lastNotNull"] } },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1, "custom": { "lineWidth": 1, "fillOpacity": 10 } } }
+    },
+    {
+      "id": 32,
+      "type": "timeseries",
+      "title": "5xx 에러율 (URI별)",
+      "gridPos": { "x": 12, "y": 24, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "uri:http_request_server_error_ratio:rate5m{application=~\"$service\", uri=~\"$uri\"}",
+          "legendFormat": "{{uri}}",
+          "refId": "A"
+        }
+      ],
+      "options": { "tooltip": { "mode": "multi", "sort": "desc" }, "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max", "lastNotNull"] } },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1, "custom": { "lineWidth": 1, "fillOpacity": 10 }, "color": { "fixedColor": "red", "mode": "fixed" } } }
+    },
+
+    {
+      "id": 40,
+      "type": "row",
+      "title": "k6 응답값 검증 (Checks)",
+      "collapsed": false,
+      "gridPos": { "x": 0, "y": 32, "w": 24, "h": 1 }
+    },
+    {
+      "id": 41,
+      "type": "stat",
+      "title": "Check 전체 통과율",
+      "gridPos": { "x": 0, "y": 33, "w": 6, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum(rate(k6_checks_total{result=\"pass\"}[1m])) / sum(rate(k6_checks_total[1m]))",
+          "legendFormat": "pass rate",
+          "refId": "A"
+        }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "colorMode": "background", "graphMode": "none" },
+      "fieldConfig": {
+        "defaults": { "unit": "percentunit", "min": 0, "max": 1, "thresholds": { "mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "yellow", "value": 0.95}, {"color": "green", "value": 0.99}] }, "color": { "mode": "thresholds" } }
+      }
+    },
+    {
+      "id": 42,
+      "type": "stat",
+      "title": "Check 실패 수 (누적)",
+      "gridPos": { "x": 6, "y": 33, "w": 6, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum(increase(k6_checks_total{result=\"fail\"}[$__range]))",
+          "legendFormat": "failures",
+          "refId": "A"
+        }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "colorMode": "background", "graphMode": "none" },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "thresholds": { "mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 1}, {"color": "red", "value": 10}] }, "color": { "mode": "thresholds" } }
+      }
+    },
+    {
+      "id": 43,
+      "type": "timeseries",
+      "title": "Check 실패 (항목별)",
+      "gridPos": { "x": 0, "y": 37, "w": 24, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum by (check) (rate(k6_checks_total{result=\"fail\"}[1m]))",
+          "legendFormat": "{{check}}",
+          "refId": "A"
+        }
+      ],
+      "options": { "tooltip": { "mode": "multi", "sort": "desc" }, "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["sum", "max", "lastNotNull"] } },
+      "fieldConfig": { "defaults": { "unit": "ops", "custom": { "lineWidth": 1, "fillOpacity": 10 }, "color": { "fixedColor": "red", "mode": "fixed" } } }
+    }
+  ]
+}

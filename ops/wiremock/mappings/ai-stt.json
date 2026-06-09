@@ -1,0 +1,21 @@
+{
+  "mappings": [
+    {
+      "name": "AI STT - transcribe",
+      "request": {
+        "method": "POST",
+        "urlPath": "/stt/transcribe"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "text": "테스트 음성 답안입니다."
+        },
+        "fixedDelayMilliseconds": 300
+      }
+    }
+  ]
+}
