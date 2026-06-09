@@ -1,0 +1,38 @@
+server:
+  port: ${GRADING_SERVICE_PORT}
+  shutdown: graceful
+  forward-headers-strategy: framework
+
+spring:
+  application:
+    name: grading-service
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+      password: ${REDIS_PASSWORD}
+      timeout: ${REDIS_TIMEOUT}
+  mongodb:
+    uri: ${MONGO_URI}
+  rabbitmq:
+    host: ${RABBITMQ_HOST}
+    port: ${RABBITMQ_PORT}
+    username: ${RABBITMQ_USERNAME}
+    password: ${RABBITMQ_PASSWORD}
+    virtual-host: /
+
+ai:
+  grading:
+    evaluate-endpoint: ${AI_GRADING_EVALUATE_ENDPOINT}
+    connect-timeout: ${AI_GRADING_CONNECT_TIMEOUT}
+    read-timeout: ${AI_GRADING_READ_TIMEOUT}
+
+service:
+  topic:
+    url: ${TOPIC_SERVICE_URL}
+  quiz:
+    url: ${QUIZ_SERVICE_URL}
+
+logging:
+  level:
+    root: INFO
