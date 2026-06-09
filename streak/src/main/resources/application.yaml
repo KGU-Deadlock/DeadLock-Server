@@ -1,0 +1,20 @@
+server:
+  port: ${STREAK_SERVICE_PORT}
+  shutdown: graceful
+  forward-headers-strategy: framework
+
+spring:
+  application:
+    name: streak-service
+  mongodb:
+    uri: ${MONGO_URI}
+  rabbitmq:
+    host: ${RABBITMQ_HOST}
+    port: ${RABBITMQ_PORT}
+    username: ${RABBITMQ_USERNAME}
+    password: ${RABBITMQ_PASSWORD}
+    virtual-host: /
+
+logging:
+  level:
+    root: INFO

@@ -1,6 +1,7 @@
 package com.deadlock.hellocs.streak.adapter.in.web;
 
-import com.deadlock.hellocs.global.apiPayload.ApiResponse;
+import com.deadlock.hellocs.common.apiPayload.ApiResponse;
+import com.deadlock.hellocs.common.web.resolver.CurrentUser;
 import com.deadlock.hellocs.streak.adapter.in.web.docs.StreakControllerDocs;
 import com.deadlock.hellocs.streak.application.port.in.QueryStreakUseCase;
 import com.deadlock.hellocs.streak.application.port.in.dto.StreakDetailResult;
@@ -9,8 +10,6 @@ import com.deadlock.hellocs.streak.application.port.in.dto.StreakSummaryResult;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -27,26 +26,23 @@ public class StreakController implements StreakControllerDocs {
 
     @GetMapping
     @Override
-    public ApiResponse<StreakSummaryResult> getSummary(@AuthenticationPrincipal Jwt jwt) {
-        Long userId = Long.valueOf(jwt.getSubject());
+    public ApiResponse<StreakSummaryResult> getSummary(@CurrentUser Long userId) {
         return ApiResponse.onSuccess(queryStreakUseCase.getSummary(userId));
     }
 
     @GetMapping(params = {"year", "month"})
     @Override
     public ApiResponse<StreakMonthlyResult> getMonthly(
-            @AuthenticationPrincipal Jwt jwt,
+            @CurrentUser Long userId,
             @RequestParam("year") @Min(2000) int year,
             @RequestParam("month") @Min(1) @Max(12) int month
     ) {
-        Long userId = Long.valueOf(jwt.getSubject());
         return ApiResponse.onSuccess(queryStreakUseCase.getMonthly(userId, year, month));
     }
 
     @GetMapping("/detail")
     @Override
-    public ApiResponse<StreakDetailResult> getDetail(@AuthenticationPrincipal Jwt jwt) {
-        Long userId = Long.valueOf(jwt.getSubject());
+    public ApiResponse<StreakDetailResult> getDetail(@CurrentUser Long userId) {
         return ApiResponse.onSuccess(queryStreakUseCase.getDetail(userId));
     }
 }
