@@ -1,0 +1,69 @@
+package com.deadlock.hellocs.user.dev;
+
+import com.deadlock.hellocs.common.apiPayload.ApiResponse;
+import com.deadlock.hellocs.user.application.port.in.CreateUserUseCase;
+import com.deadlock.hellocs.user.application.port.in.LoadUserUseCase;
+import com.deadlock.hellocs.user.application.port.in.dto.UserSignUpCommand;
+import com.deadlock.hellocs.user.domain.UserLevel;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * dev 서비스가 호출하는 유저 시딩 엔드포인트. dev 프로파일에서만 활성화된다.
+ */
+@RestController
+@RequiredArgsConstructor
+@RequestMapping("/v1/internal/dev")
+public class DevUserSeedController {
+
+    private final CreateUserUseCase createUserUseCase;
+    private final LoadUserUseCase loadUserUseCase;
+
+    /**
+     * 테스트 유저 생성. kakaoId 1001~(1000+count) 범위.
+     * 이미 존재하는 유저는 건너뛴다.
+     */
+    @PostMapping("/users")
+    public ApiResponse<SeedUsersResult> seedUsers(
+            @RequestParam(name = "count", defaultValue = "10") int count) {
+
+        UserLevel[] levels = UserLevel.values();
+        List<Long> kakaoIds = new ArrayList<>();
+        int created = 0;
+
+        for (int i = 1; i <= count; i++) {
+            long kakaoId = 1000L + i;
+            kakaoIds.add(kakaoId);
+
+            if (loadUserUseCase.isExist(kakaoId)) continue;
+
+            String nickname = String.format("devuser%02d", i);
+            createUserUseCase.createUser(kakaoId, new UserSignUpCommand(
+                    nickname,
+                    nickname + "@example.com",
+                    "https://picsum.photos/seed/" + nickname + "/200/200",
+                    levels[(i - 1) % levels.length],
+                    List.of()
+            ));
+            created++;
+        }
+
+        return ApiResponse.onSuccess(new SeedUsersResult(created, kakaoIds));
+    }
+
+    /** 특정 kakaoId 유저의 존재 여부 확인. */
+    @GetMapping("/users/{kakaoId}/exists")
+    public ApiResponse<Boolean> userExists(@PathVariable Long kakaoId) {
+        return ApiResponse.onSuccess(loadUserUseCase.isExist(kakaoId));
+    }
+
+    public record SeedUsersResult(int created, List<Long> kakaoIds) {}
+}

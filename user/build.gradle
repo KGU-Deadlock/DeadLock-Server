@@ -1,0 +1,58 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '4.0.1'
+    id 'io.spring.dependency-management' version '1.1.7'
+}
+
+group = 'com.deadlock'
+version = '0.0.1-SNAPSHOT'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+}
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation project(':common-web')
+    // user-service 전용: NimbusJwtDecoder (refresh token 검증)
+    implementation 'org.springframework.boot:spring-boot-starter-security-oauth2-resource-server'
+    implementation project(':common-jpa')
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-restclient'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
+    implementation 'io.micrometer:micrometer-tracing-bridge-otel'
+    implementation 'io.opentelemetry:opentelemetry-exporter-otlp'
+    // oauth2-resource-server는 global:api로 전이됨 (직접 선언 제거)
+    // user-service 전용: Kakao OAuth2 로그인 처리
+    implementation 'org.springframework.boot:spring-boot-starter-security-oauth2-client'
+    // user-service 전용: JWT 서명/검증 (JwtTokenProvider)
+    implementation 'io.jsonwebtoken:jjwt-api:0.12.5'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.5'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.5'
+    implementation 'me.paulschwarz:spring-dotenv:4.0.0'
+    runtimeOnly 'org.postgresql:postgresql'
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+bootJar {
+    archiveFileName = 'user-service.jar'
+}
