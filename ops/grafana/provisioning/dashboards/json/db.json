@@ -3,10 +3,10 @@
   "uid": "hellocs-db",
   "schemaVersion": 39,
   "version": 1,
-  "refresh": "30s",
+  "refresh": "5s",
   "timezone": "browser",
   "graphTooltip": 1,
-  "time": { "from": "now-1h", "to": "now" },
+  "time": { "from": "now-5m", "to": "now" },
   "tags": ["hellocs", "db"],
   "templating": {
     "list": [
@@ -61,7 +61,7 @@
           "format": "table"
         },
         {
-          "expr": "topk(20, rate(pg_stat_statements_calls_total[5m]))",
+          "expr": "topk(20, rate(pg_stat_statements_calls[5m]))",
           "legendFormat": "{{query_preview}}",
           "refId": "B",
           "instant": true,

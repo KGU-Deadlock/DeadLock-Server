@@ -110,13 +110,13 @@ if (Test-Path $datasetMeta) {
 Write-Host ""
 if ($Clean) {
     Write-Host "[1/3] 모니터링 데이터 초기화 중 (Prometheus·Grafana 볼륨 삭제) ..." -ForegroundColor Yellow
-    wsl docker compose --env-file $ENV_FILE -f $COMPOSE_FILE --profile monitoring down -v 2>&1 | Out-Null
+    wsl docker compose -p hellocs-perf --env-file $ENV_FILE -f $COMPOSE_FILE --profile monitoring down -v 2>&1 | Out-Null
 }
 
 if ($SkipInit) {
     Write-Host "[1/3] 스택 초기화 건너뜀 (-SkipInit)" -ForegroundColor DarkGray
     $env:DATASET = $Dataset
-    wsl env "DATASET=$Dataset" docker compose --env-file $ENV_FILE -f $COMPOSE_FILE --profile app --profile monitoring up -d
+    wsl env "DATASET=$Dataset" docker compose -p hellocs-perf --env-file $ENV_FILE -f $COMPOSE_FILE --profile app --profile monitoring up -d
 } elseif ($Build) {
     Write-Host "[1/3] 스택 초기화 중 (bootJar → down -v → up --build) ..." -ForegroundColor Yellow
     Write-Host "      Gradle bootJar 빌드 중 (이미지가 이 jar를 복사합니다) ..." -ForegroundColor DarkGray
@@ -126,13 +126,13 @@ if ($SkipInit) {
         exit 1
     }
     $env:DATASET = $Dataset
-    wsl docker compose --env-file $ENV_FILE -f $COMPOSE_FILE --profile app down -v 2>&1 | Out-Null
-    wsl env "DATASET=$Dataset" docker compose --env-file $ENV_FILE -f $COMPOSE_FILE --profile app --profile monitoring up -d --build
+    wsl docker compose -p hellocs-perf --env-file $ENV_FILE -f $COMPOSE_FILE --profile app down -v 2>&1 | Out-Null
+    wsl env "DATASET=$Dataset" docker compose -p hellocs-perf --env-file $ENV_FILE -f $COMPOSE_FILE --profile app --profile monitoring up -d --build
 } else {
     Write-Host "[1/3] 스택 초기화 중 (down -v → up, 빌드 생략) ..." -ForegroundColor Yellow
     $env:DATASET = $Dataset
-    wsl docker compose --env-file $ENV_FILE -f $COMPOSE_FILE --profile app down -v 2>&1 | Out-Null
-    wsl env "DATASET=$Dataset" docker compose --env-file $ENV_FILE -f $COMPOSE_FILE --profile app --profile monitoring up -d
+    wsl docker compose -p hellocs-perf --env-file $ENV_FILE -f $COMPOSE_FILE --profile app down -v 2>&1 | Out-Null
+    wsl env "DATASET=$Dataset" docker compose -p hellocs-perf --env-file $ENV_FILE -f $COMPOSE_FILE --profile app --profile monitoring up -d
 }
 
 # WireMock 준비 대기
@@ -144,8 +144,8 @@ for ($i = 0; $i -lt 20; $i++) {
 }
 if (-not $infraReady) {
     Write-Host "     WireMock 응답 없음. 로그를 확인하세요." -ForegroundColor Red
-    wsl docker compose --env-file $ENV_FILE -f $COMPOSE_FILE logs wiremock
-    if (-not $KeepUp) { wsl docker compose --env-file $ENV_FILE -f $COMPOSE_FILE --profile app down 2>&1 | Out-Null }
+    wsl docker compose -p hellocs-perf --env-file $ENV_FILE -f $COMPOSE_FILE logs wiremock
+    if (-not $KeepUp) { wsl docker compose -p hellocs-perf --env-file $ENV_FILE -f $COMPOSE_FILE --profile app down 2>&1 | Out-Null }
     exit 1
 }
 
@@ -173,7 +173,7 @@ while ($elapsed -lt $STARTUP_TIMEOUT) {
     $elapsed += 5
     if (Test-UrlReady $HEALTH_URL) { $appReady = $true; break }
     if ($Debug) {
-        wsl docker compose --env-file $ENV_FILE -f $COMPOSE_FILE logs --since 5s gateway 2>&1 |
+        wsl docker compose -p hellocs-perf --env-file $ENV_FILE -f $COMPOSE_FILE logs --since 5s gateway 2>&1 |
             ForEach-Object { Write-Host "  > $_" -ForegroundColor DarkGray }
     }
     Write-Host "     ...${elapsed}s / ${STARTUP_TIMEOUT}s" -ForegroundColor DarkGray
@@ -181,13 +181,13 @@ while ($elapsed -lt $STARTUP_TIMEOUT) {
 
 if (-not $appReady) {
     Write-Host "     앱 시작 실패. 로그를 확인하세요." -ForegroundColor Red
-    wsl docker compose --env-file $ENV_FILE -f $COMPOSE_FILE logs gateway
-    if (-not $KeepUp) { wsl docker compose --env-file $ENV_FILE -f $COMPOSE_FILE --profile app down 2>&1 | Out-Null }
+    wsl docker compose -p hellocs-perf --env-file $ENV_FILE -f $COMPOSE_FILE logs gateway
+    if (-not $KeepUp) { wsl docker compose -p hellocs-perf --env-file $ENV_FILE -f $COMPOSE_FILE --profile app down 2>&1 | Out-Null }
     exit 1
 }
 
 try {
-    Invoke-WebRequest -Uri "http://localhost:9090/-/reload" -Method POST -TimeoutSec 3 -UseBasicParsing -ErrorAction Stop | Out-Null
+    Invoke-WebRequest -Uri "http://127.0.0.1:9090/-/reload" -Method POST -TimeoutSec 3 -UseBasicParsing -ErrorAction Stop | Out-Null
     Write-Host "     앱 준비 완료 (Prometheus 리로드 완료)" -ForegroundColor Green
 } catch {
     Write-Host "     앱 준비 완료 (Prometheus 리로드 실패 — 무시하고 계속)" -ForegroundColor Yellow
@@ -222,7 +222,7 @@ $k6Args = @(
     "-e", "RESULTS_FILE=$SUMMARY_FILE"
 )
 
-$env:K6_PROMETHEUS_RW_SERVER_URL               = "http://localhost:9090/api/v1/write"
+$env:K6_PROMETHEUS_RW_SERVER_URL               = "http://127.0.0.1:9090/api/v1/write"
 $env:K6_PROMETHEUS_RW_TREND_AS_NATIVE_HISTOGRAM = "true"
 $k6Args += "--out"; $k6Args += "experimental-prometheus-rw"
 
@@ -246,12 +246,12 @@ try {
     if (-not $KeepUp) {
         Write-Host ""
         Write-Host "테스트 완료. 앱/DB 종료 중... (Prometheus/Grafana/cadvisor/node-exporter 유지)" -ForegroundColor Cyan
-        wsl docker compose --env-file $ENV_FILE -f $COMPOSE_FILE --profile app down 2>&1 | Out-Null
+        wsl docker compose -p hellocs-perf --env-file $ENV_FILE -f $COMPOSE_FILE --profile app down 2>&1 | Out-Null
     } else {
         Write-Host ""
         Write-Host "스택 유지 중 (-KeepUp 플래그). 종료하려면:" -ForegroundColor Cyan
-        Write-Host "  wsl docker compose --env-file $ENV_FILE -f $COMPOSE_FILE --profile app down" -ForegroundColor DarkGray
-        Write-Host "  (monitoring 스택까지 모두 종료: wsl docker compose --env-file $ENV_FILE -f $COMPOSE_FILE --profile app --profile monitoring down)" -ForegroundColor DarkGray
+        Write-Host "  wsl docker compose -p hellocs-perf --env-file $ENV_FILE -f $COMPOSE_FILE --profile app down" -ForegroundColor DarkGray
+        Write-Host "  (monitoring 스택까지 모두 종료: wsl docker compose -p hellocs-perf --env-file $ENV_FILE -f $COMPOSE_FILE --profile app --profile monitoring down)" -ForegroundColor DarkGray
     }
 }
 

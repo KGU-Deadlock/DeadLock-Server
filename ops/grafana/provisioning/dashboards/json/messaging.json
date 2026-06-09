@@ -3,10 +3,10 @@
   "uid": "hellocs-messaging",
   "schemaVersion": 39,
   "version": 1,
-  "refresh": "30s",
+  "refresh": "5s",
   "timezone": "browser",
   "graphTooltip": 1,
-  "time": { "from": "now-1h", "to": "now" },
+  "time": { "from": "now-5m", "to": "now" },
   "tags": ["hellocs", "messaging"],
   "templating": {
     "list": [

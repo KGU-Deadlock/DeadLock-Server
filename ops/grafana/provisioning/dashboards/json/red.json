@@ -3,10 +3,10 @@
   "uid": "hellocs-red",
   "schemaVersion": 39,
   "version": 1,
-  "refresh": "30s",
+  "refresh": "5s",
   "timezone": "browser",
   "graphTooltip": 1,
-  "time": { "from": "now-1h", "to": "now" },
+  "time": { "from": "now-5m", "to": "now" },
   "tags": ["hellocs", "red"],
   "templating": {
     "list": [
@@ -269,7 +269,7 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "sum(rate(k6_checks_total{result=\"pass\"}[1m])) / sum(rate(k6_checks_total[1m]))",
+          "expr": "min(k6_checks_rate)",
           "legendFormat": "pass rate",
           "refId": "A"
         }
@@ -282,19 +282,19 @@
     {
       "id": 42,
       "type": "stat",
-      "title": "Check 실패 수 (누적)",
+      "title": "실패 중인 체크 수",
       "gridPos": { "x": 6, "y": 33, "w": 6, "h": 4 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "sum(increase(k6_checks_total{result=\"fail\"}[$__range]))",
-          "legendFormat": "failures",
+          "expr": "count(k6_checks_rate < 1)",
+          "legendFormat": "failing checks",
           "refId": "A"
         }
       ],
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "colorMode": "background", "graphMode": "none" },
       "fieldConfig": {
-        "defaults": { "unit": "short", "thresholds": { "mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 1}, {"color": "red", "value": 10}] }, "color": { "mode": "thresholds" } }
+        "defaults": { "unit": "short", "noValue": "0", "thresholds": { "mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 1}, {"color": "red", "value": 10}] }, "color": { "mode": "thresholds" } }
       }
     },
     {
@@ -305,13 +305,13 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "sum by (check) (rate(k6_checks_total{result=\"fail\"}[1m]))",
+          "expr": "(1 - k6_checks_rate) > 0",
           "legendFormat": "{{check}}",
           "refId": "A"
         }
       ],
       "options": { "tooltip": { "mode": "multi", "sort": "desc" }, "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["sum", "max", "lastNotNull"] } },
-      "fieldConfig": { "defaults": { "unit": "ops", "custom": { "lineWidth": 1, "fillOpacity": 10 }, "color": { "fixedColor": "red", "mode": "fixed" } } }
+      "fieldConfig": { "defaults": { "unit": "percentunit", "noValue": "0", "min": 0, "max": 1, "custom": { "lineWidth": 1, "fillOpacity": 10 }, "color": { "fixedColor": "red", "mode": "fixed" } } }
     }
   ]
 }

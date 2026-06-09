@@ -39,9 +39,9 @@ $lbSec     = [int]($nowUnix - $startUnix) + 120
 $lb        = "${lbSec}s"
 
 # ── 3. Prometheus helpers ─────────────────────────────────────────────────────
-$PROM   = "http://localhost:9090/api/v1"
+$PROM   = "http://127.0.0.1:9090/api/v1"
 $promOK = $false
-try { Invoke-RestMethod "http://localhost:9090/-/healthy" -TimeoutSec 2 | Out-Null; $script:promOK = $true } catch {}
+try { Invoke-RestMethod "http://127.0.0.1:9090/-/healthy" -TimeoutSec 2 | Out-Null; $script:promOK = $true } catch {}
 
 function pq([string]$q) {
     if (-not $script:promOK) { return $null }

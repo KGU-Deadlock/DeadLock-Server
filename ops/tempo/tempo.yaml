@@ -40,5 +40,6 @@ storage:
 overrides:
   defaults:
     metrics_generator:
+      metrics_generator_enabled: true
       processors: [service-graphs, span-metrics]
       generate_native_histograms: both

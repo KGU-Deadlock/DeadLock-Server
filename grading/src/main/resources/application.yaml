@@ -2,6 +2,9 @@ server:
   port: ${GRADING_SERVICE_PORT}
   shutdown: graceful
   forward-headers-strategy: framework
+  tomcat:
+    mbeanregistry:
+      enabled: true
 
 spring:
   application:

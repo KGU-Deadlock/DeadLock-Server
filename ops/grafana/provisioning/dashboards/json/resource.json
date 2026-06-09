@@ -3,10 +3,10 @@
   "uid": "hellocs-resource",
   "schemaVersion": 39,
   "version": 1,
-  "refresh": "30s",
+  "refresh": "5s",
   "timezone": "browser",
   "graphTooltip": 1,
-  "time": { "from": "now-1h", "to": "now" },
+  "time": { "from": "now-5m", "to": "now" },
   "tags": ["hellocs", "resource"],
   "templating": {
     "list": [
@@ -350,18 +350,18 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "rate(container_cpu_cfs_throttled_seconds_total{name=~\"(gateway|user-service|topic-service|quiz-service|interview-service|ranking-service|streak-service|grading-service|stt-service)\"}[1m])",
+          "expr": "rate(container_cpu_cfs_throttled_seconds_total{name=~\".*(gateway|user-service|topic-service|quiz-service|interview-service|ranking-service|streak-service|grading-service|stt-service).*\"}[1m])",
           "legendFormat": "throttled / {{name}}",
           "refId": "A"
         },
         {
-          "expr": "rate(container_cpu_cfs_periods_total{name=~\"(gateway|user-service|topic-service|quiz-service|interview-service|ranking-service|streak-service|grading-service|stt-service)\"}[1m])",
+          "expr": "rate(container_cpu_cfs_periods_total{name=~\".*(gateway|user-service|topic-service|quiz-service|interview-service|ranking-service|streak-service|grading-service|stt-service).*\"}[1m])",
           "legendFormat": "periods / {{name}}",
           "refId": "B"
         }
       ],
       "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] } },
-      "fieldConfig": { "defaults": { "unit": "short", "custom": { "lineWidth": 1, "fillOpacity": 5 } } }
+      "fieldConfig": { "defaults": { "unit": "short", "noValue": "0", "custom": { "lineWidth": 1, "fillOpacity": 5 } } }
     }
   ]
 }

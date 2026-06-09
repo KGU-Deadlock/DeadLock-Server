@@ -134,6 +134,13 @@ scrape_configs:
   # ─────────────────────────────────────────────────────────────
 
   - job_name: rabbitmq
+    metrics_path: /metrics/detailed
+    params:
+      family:
+        - queue_coarse_metrics
+        - queue_consumer_count
+        - connection_coarse_metrics
+        - channel_metrics
     static_configs:
       - targets:
           - rabbitmq:15692
@@ -157,3 +164,8 @@ scrape_configs:
     static_configs:
       - targets:
           - node-exporter:9100
+
+  - job_name: tempo
+    static_configs:
+      - targets:
+          - tempo:3200

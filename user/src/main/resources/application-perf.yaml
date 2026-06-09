@@ -31,6 +31,9 @@ management:
     distribution:
       percentiles-histogram:
         http.server.requests: true
+        jvm.gc.pause: true
+        hikaricp.connections.acquire: true
+        hikaricp.connections.usage: true
   prometheus:
     metrics:
       export:

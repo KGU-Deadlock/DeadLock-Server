@@ -24,10 +24,8 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-      - "15692:15692"
+    volumes:
+      - ./ops/rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "ping"]
       interval: 10s
@@ -40,8 +38,6 @@ services:
     command: ["redis-server", "--appendonly", "no", "--save", ""]
     volumes:
       - redis-perf-data:/data
-    ports:
-      - "6379:6379"
     depends_on:
       redis-seeder:
         condition: service_completed_successfully
@@ -63,8 +59,6 @@ services:
       MONGO_INITDB_DATABASE: ${MONGO_DB}
     volumes:
       - mongo-perf-data:/data/db
-    ports:
-      - "27017:27017"
     deploy:
       resources:
         limits:
@@ -101,8 +95,6 @@ services:
       - postgres-user-perf-data:/var/lib/postgresql/data
       - ./ops/postgres/init:/docker-entrypoint-initdb.d:ro
       - ./ops/perf/datasets:/perf-datasets:ro
-    ports:
-      - "5432:5432"
     deploy:
       resources:
         limits:
@@ -253,6 +245,7 @@ services:
       POSTGRES_DB: ${USER_POSTGRES_DB}
       USER_SERVICE_URL: http://user-service:8081
       TOPIC_SERVICE_URL: http://topic-service:8082
+      TEMPO_HOST: tempo
     depends_on:
       postgres-user:
         condition: service_healthy
@@ -285,6 +278,7 @@ services:
       POSTGRES_HOST: postgres-topic
       POSTGRES_PORT: 5432
       POSTGRES_DB: ${TOPIC_POSTGRES_DB}
+      TEMPO_HOST: tempo
     depends_on:
       postgres-topic:
         condition: service_healthy
@@ -317,6 +311,7 @@ services:
       POSTGRES_DB: ${QUIZ_POSTGRES_DB}
       USER_SERVICE_URL: http://user-service:8081
       TOPIC_SERVICE_URL: http://topic-service:8082
+      TEMPO_HOST: tempo
     depends_on:
       postgres-quiz:
         condition: service_healthy
@@ -357,6 +352,7 @@ services:
       POSTGRES_HOST: postgres-interview
       POSTGRES_PORT: 5432
       POSTGRES_DB: ${INTERVIEW_POSTGRES_DB}
+      TEMPO_HOST: tempo
     depends_on:
       postgres-interview:
         condition: service_healthy
@@ -387,6 +383,7 @@ services:
       SERVER_PORT: 8085
       MANAGEMENT_PORT: 8095
       USER_SERVICE_URL: http://user-service:8081
+      TEMPO_HOST: tempo
     depends_on:
       redis:
         condition: service_healthy
@@ -418,6 +415,7 @@ services:
       SPRING_PROFILES_ACTIVE: perf
       SERVER_PORT: 8086
       MANAGEMENT_PORT: 8096
+      TEMPO_HOST: tempo
     depends_on:
       mongo:
         condition: service_healthy
@@ -450,6 +448,7 @@ services:
       GRADING_SERVICE_PORT: 8087
       TOPIC_SERVICE_URL: http://topic-service:8082
       QUIZ_SERVICE_URL: http://quiz-service:8083
+      TEMPO_HOST: tempo
     depends_on:
       redis:
         condition: service_healthy
@@ -484,6 +483,7 @@ services:
       SERVER_PORT: 8088
       MANAGEMENT_PORT: 8098
       STT_SERVICE_PORT: 8088
+      TEMPO_HOST: tempo
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -529,6 +529,7 @@ services:
       STT_SERVICE_PORT: 8088
       DEV_SERVICE_HOST: dev-service
       DEV_SERVICE_PORT: 8090
+      TEMPO_HOST: tempo
     ports:
       - "8080:8080"
       - "8081:8081"
@@ -580,6 +581,7 @@ services:
       QUIZ_SERVICE_URL: http://quiz-service:8083
       INTERVIEW_SERVICE_URL: http://interview-service:8084
       GRADING_SERVICE_URL: http://grading-service:8087
+      TEMPO_HOST: tempo
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -628,8 +630,6 @@ services:
       - "--collector.statio_user_tables"
     volumes:
       - ./ops/postgres_exporter/queries.yaml:/etc/postgres_exporter/queries.yaml:ro
-    ports:
-      - "9187:9187"
     depends_on:
       postgres-user:
         condition: service_healthy
@@ -645,8 +645,6 @@ services:
       - "--collector.statio_user_tables"
     volumes:
       - ./ops/postgres_exporter/queries.yaml:/etc/postgres_exporter/queries.yaml:ro
-    ports:
-      - "9188:9187"
     depends_on:
       postgres-topic:
         condition: service_healthy
@@ -662,8 +660,6 @@ services:
       - "--collector.statio_user_tables"
     volumes:
       - ./ops/postgres_exporter/queries.yaml:/etc/postgres_exporter/queries.yaml:ro
-    ports:
-      - "9189:9187"
     depends_on:
       postgres-quiz:
         condition: service_healthy
@@ -679,8 +675,6 @@ services:
       - "--collector.statio_user_tables"
     volumes:
       - ./ops/postgres_exporter/queries.yaml:/etc/postgres_exporter/queries.yaml:ro
-    ports:
-      - "9190:9187"
     depends_on:
       postgres-interview:
         condition: service_healthy
@@ -692,8 +686,6 @@ services:
       - "--mongodb.uri=mongodb://mongo:27017"
       - "--compatible-mode"
       - "--collect-all"
-    ports:
-      - "9216:9216"
     depends_on:
       mongo:
         condition: service_healthy
@@ -703,8 +695,6 @@ services:
     image: oliver006/redis_exporter:v1.63.0
     environment:
       REDIS_ADDR: "redis://redis:6379"
-    ports:
-      - "9121:9121"
     depends_on:
       redis:
         condition: service_healthy
@@ -720,10 +710,6 @@ services:
     volumes:
       - ./ops/tempo/tempo.yaml:/etc/tempo/tempo.yaml:ro
       - tempo-perf-data:/var/tempo
-    ports:
-      - "3200:3200"
-      - "4317:4317"
-      - "4318:4318"
 
   cadvisor:
     profiles: [monitoring]
@@ -750,8 +736,6 @@ services:
       - "--path.procfs=/host/proc"
       - "--path.sysfs=/host/sys"
       - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
-    ports:
-      - "9100:9100"
 
   prometheus:
     profiles: [monitoring]

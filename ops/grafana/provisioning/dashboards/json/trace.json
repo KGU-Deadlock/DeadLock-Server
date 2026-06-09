@@ -3,10 +3,10 @@
   "uid": "hellocs-trace",
   "schemaVersion": 39,
   "version": 1,
-  "refresh": "30s",
+  "refresh": "5s",
   "timezone": "browser",
   "graphTooltip": 1,
-  "time": { "from": "now-1h", "to": "now" },
+  "time": { "from": "now-5m", "to": "now" },
   "tags": ["hellocs", "trace"],
   "templating": {
     "list": [
@@ -15,7 +15,7 @@
         "label": "서비스",
         "type": "query",
         "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "query": "label_values(traces_spanmetrics_duration_milliseconds_count, service_name)",
+        "query": "label_values(traces_spanmetrics_calls_total, service)",
         "multi": false,
         "includeAll": true,
         "allValue": ".*",
@@ -41,7 +41,7 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "sum(rate(traces_spanmetrics_duration_milliseconds_count{service_name=~\"$service\"}[1m]))",
+          "expr": "sum(rate(traces_spanmetrics_calls_total{service=~\"$service\"}[1m]))",
           "legendFormat": "spans/s",
           "refId": "A"
         }
@@ -59,14 +59,14 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "sum(rate(traces_spanmetrics_duration_milliseconds_count{service_name=~\"$service\",status_code=\"STATUS_CODE_ERROR\"}[5m])) / sum(rate(traces_spanmetrics_duration_milliseconds_count{service_name=~\"$service\"}[5m]))",
+          "expr": "sum(rate(traces_spanmetrics_calls_total{service=~\"$service\",status_code=\"STATUS_CODE_ERROR\"}[5m])) / sum(rate(traces_spanmetrics_calls_total{service=~\"$service\"}[5m]))",
           "legendFormat": "error ratio",
           "refId": "A"
         }
       ],
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "colorMode": "background", "graphMode": "none" },
       "fieldConfig": {
-        "defaults": { "unit": "percentunit", "thresholds": { "mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 0.01}, {"color": "red", "value": 0.05}] }, "color": { "mode": "thresholds" } }
+        "defaults": { "unit": "percentunit", "noValue": "0", "thresholds": { "mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 0.01}, {"color": "red", "value": 0.05}] }, "color": { "mode": "thresholds" } }
       }
     },
     {
@@ -77,14 +77,14 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(traces_spanmetrics_duration_milliseconds_bucket{service_name=~\"$service\"}[5m])))",
-          "legendFormat": "p95 ms",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(traces_spanmetrics_latency_bucket{service=~\"$service\"}[5m])))",
+          "legendFormat": "p95",
           "refId": "A"
         }
       ],
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "colorMode": "background", "graphMode": "none" },
       "fieldConfig": {
-        "defaults": { "unit": "ms", "thresholds": { "mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 500}, {"color": "red", "value": 1000}] }, "color": { "mode": "thresholds" } }
+        "defaults": { "unit": "s", "thresholds": { "mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 0.5}, {"color": "red", "value": 1.0}] }, "color": { "mode": "thresholds" } }
       }
     },
     {
@@ -97,28 +97,28 @@
     {
       "id": 11,
       "type": "timeseries",
-      "title": "서비스별 p50/p95/p99 레이턴시 (ms)",
+      "title": "서비스별 p50/p95/p99 레이턴시 (s)",
       "gridPos": { "x": 0, "y": 6, "w": 24, "h": 8 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "histogram_quantile(0.50, sum by (le, service_name) (rate(traces_spanmetrics_duration_milliseconds_bucket{service_name=~\"$service\"}[5m])))",
-          "legendFormat": "p50 / {{service_name}}",
+          "expr": "histogram_quantile(0.50, sum by (le, service) (rate(traces_spanmetrics_latency_bucket{service=~\"$service\"}[5m])))",
+          "legendFormat": "p50 / {{service}}",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.95, sum by (le, service_name) (rate(traces_spanmetrics_duration_milliseconds_bucket{service_name=~\"$service\"}[5m])))",
-          "legendFormat": "p95 / {{service_name}}",
+          "expr": "histogram_quantile(0.95, sum by (le, service) (rate(traces_spanmetrics_latency_bucket{service=~\"$service\"}[5m])))",
+          "legendFormat": "p95 / {{service}}",
           "refId": "B"
         },
         {
-          "expr": "histogram_quantile(0.99, sum by (le, service_name) (rate(traces_spanmetrics_duration_milliseconds_bucket{service_name=~\"$service\"}[5m])))",
-          "legendFormat": "p99 / {{service_name}}",
+          "expr": "histogram_quantile(0.99, sum by (le, service) (rate(traces_spanmetrics_latency_bucket{service=~\"$service\"}[5m])))",
+          "legendFormat": "p99 / {{service}}",
           "refId": "C"
         }
       ],
       "options": { "tooltip": { "mode": "multi", "sort": "desc" }, "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max", "lastNotNull"] } },
-      "fieldConfig": { "defaults": { "unit": "ms", "custom": { "lineWidth": 1, "fillOpacity": 3 } } }
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "lineWidth": 1, "fillOpacity": 3 } } }
     },
     {
       "id": 15,
