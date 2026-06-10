@@ -9,5 +9,6 @@ import java.util.List;
 public interface QueryInterviewOutputPort {
     Interview findById(String interviewId);
     List<InterviewQuestion> findQuestionsByInterviewId(String interviewId);
+    InterviewQuestion findQuestionByInterviewIdAndQuestionNumber(String interviewId, int questionNumber);
     List<InterviewAnswer> findAnswersByInterviewId(String interviewId);
 }

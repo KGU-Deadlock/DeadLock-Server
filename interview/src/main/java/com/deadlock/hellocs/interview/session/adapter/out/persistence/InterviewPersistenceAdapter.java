@@ -65,6 +65,14 @@ public class InterviewPersistenceAdapter implements CommandInterviewOutputPort, 
     }
 
     @Override
+    public InterviewQuestion findQuestionByInterviewIdAndQuestionNumber(String interviewId, int questionNumber) {
+        return interviewQuestionRepository
+                .findByInterviewIdAndQuestionNumber(interviewId, questionNumber)
+                .map(InterviewQuestionJpaEntity::toDomain)
+                .orElseThrow(() -> new CustomException(InterviewErrorStatus.INTERVIEW_NOT_FOUND));
+    }
+
+    @Override
     public List<InterviewAnswer> findAnswersByInterviewId(String interviewId) {
         return interviewAnswerRepository
                 .findByInterviewIdOrderByQuestionNumber(interviewId)

@@ -1,5 +1,6 @@
 package com.deadlock.hellocs.interview.session.domain;
 
+import com.deadlock.hellocs.interview.feedback.domain.QuestionFeedback;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -14,4 +15,5 @@ public class InterviewAnswer {
     private String answerText;
     private Integer durationSeconds;
     private LocalDateTime answeredAt;
+    private QuestionFeedback questionFeedback;
 }

@@ -5,8 +5,11 @@ import com.deadlock.hellocs.global.exception.CustomException;
 import com.deadlock.hellocs.interview.exception.InterviewErrorStatus;
 import com.deadlock.hellocs.interview.feedback.application.port.in.CommandFeedbackInputPort;
 import com.deadlock.hellocs.interview.feedback.application.port.in.dto.GenerateFeedbackCommand;
-import com.deadlock.hellocs.interview.feedback.application.port.in.dto.QaPair;
 import com.deadlock.hellocs.interview.feedback.application.port.in.dto.FeedbackResult;
+import com.deadlock.hellocs.interview.feedback.application.port.out.AiFeedbackOutputPort;
+import com.deadlock.hellocs.interview.feedback.application.port.out.dto.AiFeedbackRequest;
+import com.deadlock.hellocs.interview.feedback.application.port.out.dto.AiFeedbackResponse;
+import com.deadlock.hellocs.interview.feedback.domain.QuestionFeedback;
 import com.deadlock.hellocs.interview.question.application.port.out.QueryCsQuestionOutputPort;
 import com.deadlock.hellocs.interview.question.domain.CsQuestion;
 import com.deadlock.hellocs.interview.session.application.event.InterviewCompletedEvent;
@@ -35,6 +38,7 @@ public class InterviewCommandService implements CommandInterviewInputPort {
     private final QueryInterviewOutputPort queryInterviewOutputPort;
     private final QueryCsQuestionOutputPort queryCsQuestionOutputPort;
     private final CommandFeedbackInputPort commandFeedbackInputPort;
+    private final AiFeedbackOutputPort aiFeedbackOutputPort;
     private final ApplicationEventPublisher eventPublisher;
 
     @Override
@@ -75,12 +79,27 @@ public class InterviewCommandService implements CommandInterviewInputPort {
             return;
         }
 
+        InterviewQuestion question = queryInterviewOutputPort.findQuestionByInterviewIdAndQuestionNumber(
+                command.interviewId(), command.questionNumber());
+
+        AiFeedbackResponse aiResponse = aiFeedbackOutputPort.evaluate(
+                new AiFeedbackRequest(question.getQuestionText(), command.answerText(), null));
+
+        QuestionFeedback questionFeedback = QuestionFeedback.builder()
+                .questionNumber(command.questionNumber())
+                .score(aiResponse.score())
+                .missingKeywords(aiResponse.missingKeywords())
+                .improvedAnswer(aiResponse.improvedAnswer())
+                .message(aiResponse.message())
+                .build();
+
         InterviewAnswer answer = InterviewAnswer.builder()
                 .interviewId(command.interviewId())
                 .questionNumber(command.questionNumber())
                 .answerText(command.answerText())
                 .durationSeconds(command.durationSeconds())
                 .answeredAt(LocalDateTime.now())
+                .questionFeedback(questionFeedback)
                 .build();
 
         commandInterviewOutputPort.saveAnswer(answer);
@@ -95,7 +114,10 @@ public class InterviewCommandService implements CommandInterviewInputPort {
         List<InterviewQuestion> questions = queryInterviewOutputPort.findQuestionsByInterviewId(interviewId);
         List<InterviewAnswer> answers = queryInterviewOutputPort.findAnswersByInterviewId(interviewId);
 
-        List<QaPair> qaPairs = buildQaPairs(questions, answers);
+        List<QuestionFeedback> questionFeedbacks = answers.stream()
+                .map(InterviewAnswer::getQuestionFeedback)
+                .filter(f -> f != null)
+                .toList();
 
         LocalDateTime completedAt = LocalDateTime.now();
         commandInterviewOutputPort.markCompleted(interviewId);
@@ -108,7 +130,7 @@ public class InterviewCommandService implements CommandInterviewInputPort {
         ));
 
         return commandFeedbackInputPort.generateFeedback(
-                new GenerateFeedbackCommand(interviewId, interview.getCompanyName(), interview.getPosition(), qaPairs)
+                new GenerateFeedbackCommand(interviewId, interview.getCompanyName(), interview.getPosition(), questionFeedbacks)
         );
     }
 
@@ -156,16 +178,5 @@ public class InterviewCommandService implements CommandInterviewInputPort {
         return questions;
     }
 
-    private List<QaPair> buildQaPairs(List<InterviewQuestion> questions, List<InterviewAnswer> answers) {
-        return questions.stream()
-                .map(q -> {
-                    String answerText = answers.stream()
-                            .filter(a -> a.getQuestionNumber() == q.getQuestionNumber())
-                            .map(InterviewAnswer::getAnswerText)
-                            .findFirst()
-                            .orElse("");
-                    return new QaPair(q.getQuestionText(), answerText, q.getQuestionType().name().toLowerCase());
-                })
-                .toList();
-    }
+
 }
