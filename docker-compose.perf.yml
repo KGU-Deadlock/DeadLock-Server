@@ -26,6 +26,11 @@ services:
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
     volumes:
       - ./ops/rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
+    deploy:
+      resources:
+        limits:
+          memory: ${RABBITMQ_MEMORY_LIMIT}
+          cpus: '${RABBITMQ_CPU_LIMIT}'
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "ping"]
       interval: 10s
@@ -98,8 +103,8 @@ services:
     deploy:
       resources:
         limits:
-          memory: ${POSTGRES_MEMORY_LIMIT}
-          cpus: '${POSTGRES_CPU_LIMIT}'
+          memory: ${POSTGRES_USER_MEMORY_LIMIT}
+          cpus: '${POSTGRES_USER_CPU_LIMIT}'
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${USER_POSTGRES_DB}"]
       interval: 10s
@@ -128,8 +133,8 @@ services:
     deploy:
       resources:
         limits:
-          memory: ${POSTGRES_MEMORY_LIMIT}
-          cpus: '${POSTGRES_CPU_LIMIT}'
+          memory: ${POSTGRES_TOPIC_MEMORY_LIMIT}
+          cpus: '${POSTGRES_TOPIC_CPU_LIMIT}'
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${TOPIC_POSTGRES_DB}"]
       interval: 10s
@@ -160,8 +165,8 @@ services:
     deploy:
       resources:
         limits:
-          memory: ${POSTGRES_MEMORY_LIMIT}
-          cpus: '${POSTGRES_CPU_LIMIT}'
+          memory: ${POSTGRES_QUIZ_MEMORY_LIMIT}
+          cpus: '${POSTGRES_QUIZ_CPU_LIMIT}'
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${QUIZ_POSTGRES_DB}"]
       interval: 10s
@@ -169,7 +174,7 @@ services:
       retries: 5
 
   postgres-interview:
-    profiles: [app]
+    profiles: [extra]   # baseline 미사용 (bake 전용). bake는 --profile app --profile extra 로 기동.
     image: postgres:17-alpine
     command:
       - "postgres"
@@ -190,8 +195,8 @@ services:
     deploy:
       resources:
         limits:
-          memory: ${POSTGRES_MEMORY_LIMIT}
-          cpus: '${POSTGRES_CPU_LIMIT}'
+          memory: 768m    # hardware.env 미정의 — bake 전용 리터럴 기본값
+          cpus: '0.45'
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${INTERVIEW_POSTGRES_DB}"]
       interval: 10s
@@ -338,7 +343,7 @@ services:
       start_period: 30s
 
   interview-service:
-    profiles: [app]
+    profiles: [extra]   # baseline 미사용 (bake 전용)
     build:
       context: .
       dockerfile: interview/Dockerfile
@@ -471,7 +476,7 @@ services:
       start_period: 30s
 
   stt-service:
-    profiles: [app]
+    profiles: [extra]   # baseline 미사용 (bake 전용)
     build:
       context: .
       dockerfile: stt/Dockerfile
@@ -540,15 +545,11 @@ services:
         condition: service_healthy
       quiz-service:
         condition: service_healthy
-      interview-service:
-        condition: service_healthy
       ranking-service:
         condition: service_healthy
       streak-service:
         condition: service_healthy
       grading-service:
-        condition: service_healthy
-      stt-service:
         condition: service_healthy
       dev-service:
         condition: service_healthy
@@ -590,8 +591,6 @@ services:
       topic-service:
         condition: service_healthy
       quiz-service:
-        condition: service_healthy
-      interview-service:
         condition: service_healthy
       grading-service:
         condition: service_healthy
@@ -665,7 +664,7 @@ services:
         condition: service_healthy
 
   postgres_exporter_interview:
-    profiles: [app]
+    profiles: [extra]   # interview-service와 동일하게 baseline 제외
     image: prometheuscommunity/postgres-exporter
     environment:
       DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-interview:5432/${INTERVIEW_POSTGRES_DB}?sslmode=disable"

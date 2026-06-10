@@ -43,4 +43,5 @@ src/main/resources/application-docker.yml
 .docker-compose.yml
 ops/perf/datasets/
 k6/results/
+k6/.perf-profile.json
 .env.example

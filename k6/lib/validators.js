@@ -152,6 +152,40 @@ export function validateQuizGradingDetail(res, name) {
   });
 }
 
+export function validateGradingList(res, name) {
+  const body = parse(res);
+  const data = body?.data;
+  return check(res, {
+    [`${name}: status 200`]:   (r) => r.status === 200,
+    [`${name}: isSuccess`]:    () => body?.isSuccess === true,
+    [`${name}: data 배열`]:    () => Array.isArray(data),
+    [`${name}: 항목 id 문자열`]: () => !data?.length || typeof data[0].id === 'string',
+  });
+}
+
+export function validateUserMe(res, name) {
+  const body = parse(res);
+  const data = body?.data;
+  return check(res, {
+    [`${name}: status 200`]:          (r) => r.status === 200,
+    [`${name}: isSuccess`]:           () => body?.isSuccess === true,
+    [`${name}: data 존재`]:            () => data != null,
+    [`${name}: userId 존재`]:          () => data?.userId != null,
+    [`${name}: nickname 문자열`]:      () => typeof data?.nickname === 'string',
+  });
+}
+
+export function validateTopics(res, name) {
+  const body = parse(res);
+  const data = body?.data;
+  return check(res, {
+    [`${name}: status 200`]:           (r) => r.status === 200,
+    [`${name}: isSuccess`]:            () => body?.isSuccess === true,
+    [`${name}: data 배열`]:            () => Array.isArray(data),
+    [`${name}: 항목 name 문자열`]:     () => !data?.length || typeof data[0].name === 'string',
+  });
+}
+
 // 단답형 퀴즈 상세 검증 — WireMock AI 채점 고정값 확인
 export function validateQuizGradingDetailItem(res, name) {
   const body = parse(res);
