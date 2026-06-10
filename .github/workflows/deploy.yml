@@ -55,7 +55,7 @@ jobs:
         shell: bash
         run: |
           curl -fsS -H 'Content-Type: application/json' \
-            -d "{\"content\":\"✅ [Backend] Deploy success: \`${{ github.repository }}@${{ github.sha }}\` (${GITHUB_REF_NAME})\"}" \
+            -d "{\"content\":\"✅ [Backend] Deploy success: \`${{ github.repository }}@$(echo ${{ github.sha }} | cut -c1-7)\` (${GITHUB_REF_NAME})\"}" \
             "${{ secrets.DISCORD_WEBHOOK_URL }}"
 
       - name: Notify Discord (failure)
@@ -63,5 +63,5 @@ jobs:
         shell: bash
         run: |
           curl -fsS -H 'Content-Type: application/json' \
-            -d "{\"content\":\"❌ [Backend] Deploy failed: \`${{ github.repository }}@${{ github.sha }}\`\\nActions: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
+            -d "{\"content\":\"❌ [Backend] Deploy failed: \`${{ github.repository }}@$(echo ${{ github.sha }} | cut -c1-7)\`\\nActions: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
             "${{ secrets.DISCORD_WEBHOOK_URL }}"

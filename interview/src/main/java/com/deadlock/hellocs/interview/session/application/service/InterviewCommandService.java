@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -69,7 +70,9 @@ public class InterviewCommandService implements CommandInterviewInputPort {
     public void submitAnswer(SubmitAnswerCommand command) {
         Interview interview = queryInterviewOutputPort.findById(command.interviewId());
         if (interview.isCompleted()) {
-            throw new CustomException(InterviewErrorStatus.INTERVIEW_ALREADY_COMPLETED);
+            log.warn("답변 제출 무시 - 이미 완료된 면접 세션: interviewId={}, questionNumber={}",
+                    command.interviewId(), command.questionNumber());
+            return;
         }
 
         InterviewAnswer answer = InterviewAnswer.builder()

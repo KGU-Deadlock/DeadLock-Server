@@ -16,7 +16,7 @@ public class FeedbackController implements FeedbackControllerDocs {
 
     @GetMapping("/{interviewId}/feedback")
     @Override
-    public ApiResponse<FeedbackResult> getFeedback(@PathVariable String interviewId) {
+    public ApiResponse<FeedbackResult> getFeedback(@PathVariable("interviewId") String interviewId) {
         return ApiResponse.onSuccess(queryFeedbackInputPort.getFeedback(interviewId));
     }
 }
