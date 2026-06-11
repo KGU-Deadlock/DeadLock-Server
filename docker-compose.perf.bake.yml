@@ -29,9 +29,6 @@ x-app-health: &app-health
   retries: 30
   start_period: 30s
 
-# JVM: 리소스 제한 없으므로 힙 비중 높여 GC 부담 감소 (시딩 루프 throughput 확보)
-x-bake-java-opts: &bake-java-opts "-XX:MaxRAMPercentage=75"
-
 services:
 
   # ─────────────────────────────────────────────────────────────
@@ -196,7 +193,7 @@ services:
       TEMPO_HOST: tempo
       SPRING_JPA_HIBERNATE_DDL_AUTO: create
       SPRING_MAIN_LAZY_INITIALIZATION: "true"
-      JAVA_OPTS: *bake-java-opts
+      
     depends_on:
       postgres-user:
         condition: service_healthy
@@ -224,7 +221,7 @@ services:
       TEMPO_HOST: tempo
       SPRING_JPA_HIBERNATE_DDL_AUTO: create
       SPRING_MAIN_LAZY_INITIALIZATION: "true"
-      JAVA_OPTS: *bake-java-opts
+      
     depends_on:
       postgres-topic:
         condition: service_healthy
@@ -252,7 +249,7 @@ services:
       TEMPO_HOST: tempo
       SPRING_JPA_HIBERNATE_DDL_AUTO: create
       SPRING_MAIN_LAZY_INITIALIZATION: "true"
-      JAVA_OPTS: *bake-java-opts
+      
     depends_on:
       postgres-quiz:
         condition: service_healthy
@@ -288,7 +285,7 @@ services:
       TEMPO_HOST: tempo
       SPRING_JPA_HIBERNATE_DDL_AUTO: create
       SPRING_MAIN_LAZY_INITIALIZATION: "true"
-      JAVA_OPTS: *bake-java-opts
+      
     depends_on:
       postgres-interview:
         condition: service_healthy
@@ -312,7 +309,7 @@ services:
       MANAGEMENT_PORT: 8095
       USER_SERVICE_URL: http://user-service:8081
       TEMPO_HOST: tempo
-      JAVA_OPTS: *bake-java-opts
+      
     depends_on:
       redis:
         condition: service_healthy
@@ -337,7 +334,7 @@ services:
       SERVER_PORT: 8086
       MANAGEMENT_PORT: 8096
       TEMPO_HOST: tempo
-      JAVA_OPTS: *bake-java-opts
+      
     depends_on:
       mongo:
         condition: service_healthy
@@ -363,7 +360,7 @@ services:
       TOPIC_SERVICE_URL: http://topic-service:8082
       QUIZ_SERVICE_URL: http://quiz-service:8083
       TEMPO_HOST: tempo
-      JAVA_OPTS: *bake-java-opts
+      
     depends_on:
       redis:
         condition: service_healthy
@@ -392,7 +389,7 @@ services:
       STT_SERVICE_PORT: 8088
       TEMPO_HOST: tempo
       SPRING_MAIN_LAZY_INITIALIZATION: "true"
-      JAVA_OPTS: *bake-java-opts
+      
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -432,7 +429,7 @@ services:
       DEV_SERVICE_PORT: 8090
       TEMPO_HOST: tempo
       SPRING_MAIN_LAZY_INITIALIZATION: "true"
-      JAVA_OPTS: *bake-java-opts
+      
     ports:
       - "8080:8080"
       - "8081:8081"
@@ -476,7 +473,7 @@ services:
       RANKING_SERVICE_URL: http://ranking-service:8085
       TEMPO_HOST: tempo
       SPRING_MAIN_LAZY_INITIALIZATION: "true"
-      JAVA_OPTS: *bake-java-opts
+      
     depends_on:
       rabbitmq:
         condition: service_healthy

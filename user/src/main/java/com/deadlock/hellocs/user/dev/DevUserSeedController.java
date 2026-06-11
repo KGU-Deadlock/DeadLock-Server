@@ -30,14 +30,19 @@ public class DevUserSeedController {
     /**
      * 테스트 유저 생성. kakaoId 1001~(1000+count) 범위.
      * 이미 존재하는 유저는 건너뛴다.
+     *
+     * @param count     생성할 유저 수
+     * @param numTopics 관심 토픽 수 (ID 1~numTopics, 유저별 1개 할당). 기본 6.
      */
     @PostMapping("/users")
     public ApiResponse<SeedUsersResult> seedUsers(
-            @RequestParam(name = "count", defaultValue = "10") int count) {
+            @RequestParam(name = "count", defaultValue = "10") int count,
+            @RequestParam(name = "numTopics", defaultValue = "6") int numTopics) {
 
         UserLevel[] levels = UserLevel.values();
         List<Long> kakaoIds = new ArrayList<>();
         int created = 0;
+        int safeNumTopics = Math.max(1, numTopics);
 
         for (int i = 1; i <= count; i++) {
             long kakaoId = 1000L + i;
@@ -45,13 +50,15 @@ public class DevUserSeedController {
 
             if (loadUserUseCase.isExist(kakaoId)) continue;
 
-            String nickname = String.format("devuser%02d", i);
+            String nickname = String.format("devuser%05d", i);
+            // 관심 토픽: kakaoId 기준 1개 — 토픽 ID 1~numTopics를 순환 배정
+            long interestTopicId = (long)((i - 1) % safeNumTopics) + 1L;
             createUserUseCase.createUser(kakaoId, new UserSignUpCommand(
                     nickname,
                     nickname + "@example.com",
                     "https://picsum.photos/seed/" + nickname + "/200/200",
                     levels[(i - 1) % levels.length],
-                    List.of()
+                    List.of(interestTopicId)
             ));
             created++;
         }

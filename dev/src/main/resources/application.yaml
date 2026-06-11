@@ -23,6 +23,10 @@ service:
     url: ${INTERVIEW_SERVICE_URL}
   grading:
     url: ${GRADING_SERVICE_URL}
+  streak:
+    url: ${STREAK_SERVICE_URL}
+  ranking:
+    url: ${RANKING_SERVICE_URL}
 
 logging:
   level:

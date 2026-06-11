@@ -16,6 +16,7 @@ import com.deadlock.hellocs.interview.session.application.port.out.QueryIntervie
 import com.deadlock.hellocs.interview.session.domain.*;
 import lombok.RequiredArgsConstructor;
 import com.deadlock.hellocs.common.amqp.RabbitMQConfig;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
