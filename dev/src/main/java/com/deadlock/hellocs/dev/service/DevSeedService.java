@@ -208,6 +208,21 @@ public class DevSeedService {
         );
     }
 
+    // ─── 유저 시딩 진행상황 조회 ──────────────────────────────────────────────
+
+    public UserSeedProgressResult getUserSeedProgress() {
+        try {
+            UserSeedProgressApiResponse resp = userClient.get()
+                    .uri("/v1/internal/dev/users/progress")
+                    .retrieve()
+                    .body(UserSeedProgressApiResponse.class);
+            if (resp == null || resp.data() == null) return new UserSeedProgressResult(0, 0);
+            return new UserSeedProgressResult(resp.data().processed(), resp.data().total());
+        } catch (Exception e) {
+            return new UserSeedProgressResult(0, 0);
+        }
+    }
+
     // ─── activity 진행상황 조회 ────────────────────────────────────────────────
 
     public ActivityProgressResult getActivityProgress() {
@@ -347,6 +362,7 @@ public class DevSeedService {
     public record SeedCsQuestionsResult(int categoryCount, int questionsCreated) {}
 
     public record SeedUsersOnlyResult(int usersCreated) {}
+    public record UserSeedProgressResult(int processed, int total) {}
 
     public record SeedActivityResult(int gradingDocsCreated, int streakDailyRecordsCreated, int rankingMembersCreated) {}
 
@@ -395,6 +411,9 @@ public class DevSeedService {
     private record SeedRankingApiResponse(boolean isSuccess, SeedRankingResponse data) {}
 
     private record UserExistsApiResponse(boolean isSuccess, Boolean data) {}
+
+    private record UserSeedProgressData(int processed, int total) {}
+    private record UserSeedProgressApiResponse(boolean isSuccess, UserSeedProgressData data) {}
 
     private record GradingSnapshotData(boolean running, int processedUsers, int totalUsers, long insertedDocs) {}
     private record GradingProgressApiResponse(boolean isSuccess, GradingSnapshotData data) {}

@@ -85,6 +85,11 @@ public class DevController {
                 tokenPoolSize, seed));
     }
 
+    @GetMapping("/seed/users/progress")
+    public ApiResponse<DevSeedService.UserSeedProgressResult> getUserSeedProgress() {
+        return ApiResponse.onSuccess(devSeedService.getUserSeedProgress());
+    }
+
     @GetMapping("/seed/activity/progress")
     public ApiResponse<DevSeedService.ActivityProgressResult> getActivityProgress() {
         return ApiResponse.onSuccess(devSeedService.getActivityProgress());

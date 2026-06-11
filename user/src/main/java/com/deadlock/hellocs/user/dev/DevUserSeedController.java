@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * dev 서비스가 호출하는 유저 시딩 엔드포인트. dev 프로파일에서만 활성화된다.
@@ -26,6 +27,9 @@ public class DevUserSeedController {
 
     private final CreateUserUseCase createUserUseCase;
     private final LoadUserUseCase loadUserUseCase;
+
+    private final AtomicInteger seedProcessed = new AtomicInteger(0);
+    private volatile int seedTotal = 0;
 
     /**
      * 테스트 유저 생성. kakaoId 1001~(1000+count) 범위.
@@ -44,9 +48,13 @@ public class DevUserSeedController {
         int created = 0;
         int safeNumTopics = Math.max(1, numTopics);
 
+        seedTotal = count;
+        seedProcessed.set(0);
+
         for (int i = 1; i <= count; i++) {
             long kakaoId = 1000L + i;
             kakaoIds.add(kakaoId);
+            seedProcessed.incrementAndGet();
 
             if (loadUserUseCase.isExist(kakaoId)) continue;
 
@@ -66,6 +74,12 @@ public class DevUserSeedController {
         return ApiResponse.onSuccess(new SeedUsersResult(created, kakaoIds));
     }
 
+    /** 유저 시딩 진행 상황 조회. */
+    @GetMapping("/users/progress")
+    public ApiResponse<SeedUsersProgressResult> getUserSeedProgress() {
+        return ApiResponse.onSuccess(new SeedUsersProgressResult(seedProcessed.get(), seedTotal));
+    }
+
     /** 특정 kakaoId 유저의 존재 여부 확인. */
     @GetMapping("/users/{kakaoId}/exists")
     public ApiResponse<Boolean> userExists(@PathVariable Long kakaoId) {
@@ -73,4 +87,5 @@ public class DevUserSeedController {
     }
 
     public record SeedUsersResult(int created, List<Long> kakaoIds) {}
+    public record SeedUsersProgressResult(int processed, int total) {}
 }

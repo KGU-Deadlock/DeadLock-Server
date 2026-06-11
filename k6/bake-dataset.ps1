@@ -4,7 +4,7 @@ param(
 
     [switch]$Build,      # bootJar 재빌드 후 스택 시작 (소스코드 변경 시 사용)
     [switch]$KeepUp,     # 완료 후 bake 스택 유지 (기본: down)
-    [switch]$Debug,      # 명령어 출력 표시 (평시에는 억제됨)
+    [switch]$ShowOutput, # 명령어 출력 표시 (평시에는 억제됨)
     [switch]$DumpOnly    # 실행 중인 bake 스택에서 덤프만 수행 (datasets/<Name>)
 )
 
@@ -34,7 +34,7 @@ param(
   .\k6\bake-dataset.ps1 -Name default
   .\k6\bake-dataset.ps1 -Name default -Build
   .\k6\bake-dataset.ps1 -Name default -KeepUp
-  .\k6\bake-dataset.ps1 -Name default -Debug
+  .\k6\bake-dataset.ps1 -Name default -ShowOutput
 
 .NOTES
   규모(users, segments)는 ops/perf/profiles/dataset.env 에서 제어합니다.
@@ -104,7 +104,7 @@ function Invoke-Compose {
 # -Debug 시 출력을 표시하고, 평시에는 억제한다.
 function Invoke-ComposeQ {
     param([string[]]$CmdArgs)
-    if ($script:Debug) {
+    if ($script:ShowOutput) {
         Invoke-Compose $CmdArgs
     } else {
         Invoke-Compose $CmdArgs 2>&1 | Out-Null
@@ -167,7 +167,7 @@ function Invoke-Seed($Label, $Uri, $TimeoutSec = 900) {
 }
 
 # 진행 상황을 5초마다 progress 엔드포인트로 폴링하면서 대기하는 시드 함수 (오래 걸리는 단계 전용)
-function Invoke-SeedWithProgress($Label, $Uri, $TimeoutSec = 900) {
+function Invoke-SeedWithProgress($Label, $Uri, $TimeoutSec = 900, $ProgressUrl = "") {
     Write-Host "      $Label ..." -ForegroundColor Yellow
 
     $job = Start-Job -ScriptBlock {
@@ -180,27 +180,34 @@ function Invoke-SeedWithProgress($Label, $Uri, $TimeoutSec = 900) {
         }
     } -ArgumentList $Uri, $TimeoutSec
 
-    $progressUrl = "$GwAppUrl/v1/dev/seed/activity/progress"
-    $start       = [DateTime]::UtcNow
+    $resolvedProgressUrl = if ($ProgressUrl) { $ProgressUrl } else { "$GwAppUrl/v1/dev/seed/activity/progress" }
+    $start               = [DateTime]::UtcNow
 
     while ($job.State -eq 'Running') {
         Start-Sleep -Seconds 5
         $localElapsed = [int]([DateTime]::UtcNow - $start).TotalSeconds
 
         try {
-            $resp  = Invoke-RestMethod -Uri $progressUrl -Method GET -TimeoutSec 3 -ErrorAction Stop
-            $p     = $resp.data
-            $phase = $p.phase
-            $elSrv = $p.elapsedSeconds
+            $resp = Invoke-RestMethod -Uri $resolvedProgressUrl -Method GET -TimeoutSec 3 -ErrorAction Stop
+            $p    = $resp.data
 
-            if ($p.grading -and $p.grading.totalUsers -gt 0) {
+            if ($p.PSObject.Properties['total'] -and $p.total -gt 0) {
+                # 유저 시딩 progress: { processed, total }
+                $pct = [int]($p.processed * 100 / $p.total)
+                Write-Host ("      [USERS] {0}/{1} ({2}%) — {3}s 경과" -f `
+                    $p.processed, $p.total, $pct, $localElapsed) `
+                    -ForegroundColor DarkGray
+            } elseif ($p.grading -and $p.grading.totalUsers -gt 0) {
+                # activity 시딩 progress: { phase, elapsedSeconds, grading: { ... } }
                 $g   = $p.grading
                 $pct = [int]($g.processedUsers * 100 / $g.totalUsers)
                 Write-Host ("      [{0}] 유저 {1}/{2} ({3}%) — docs {4} ({5}s)" -f `
-                    $phase, $g.processedUsers, $g.totalUsers, $pct, $g.insertedDocs, $elSrv) `
+                    $p.phase, $g.processedUsers, $g.totalUsers, $pct, $g.insertedDocs, $p.elapsedSeconds) `
                     -ForegroundColor DarkGray
+            } elseif ($p.PSObject.Properties['phase']) {
+                Write-Host "      [$($p.phase)] $($p.elapsedSeconds)s 경과" -ForegroundColor DarkGray
             } else {
-                Write-Host "      [$phase] ${elSrv}s 경과" -ForegroundColor DarkGray
+                Write-Host "      ...${localElapsed}s 경과" -ForegroundColor DarkGray
             }
         } catch {
             Write-Host "      ...${localElapsed}s 경과" -ForegroundColor DarkGray
@@ -402,7 +409,7 @@ $usersUrl = "$GwAppUrl/v1/dev/seed/users" +
     "&numTopics=$numTopics"
 
 try {
-    Invoke-Seed "users" $usersUrl
+    Invoke-SeedWithProgress "users" $usersUrl -ProgressUrl "$GwAppUrl/v1/dev/seed/users/progress"
 } catch {
     Write-Host " 실패: $_" -ForegroundColor Red
     Show-Diagnostics "users-seed" `
