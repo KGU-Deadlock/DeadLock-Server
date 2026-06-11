@@ -15,7 +15,7 @@
         "label": "큐",
         "type": "query",
         "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "query": "label_values(rabbitmq_queue_messages_ready, queue)",
+        "query": "label_values(rabbitmq_detailed_queue_messages_ready, queue)",
         "multi": true,
         "includeAll": true,
         "allValue": ".+",
@@ -41,7 +41,7 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "rabbitmq_queue_messages_ready{queue=~\"$queue\"}",
+          "expr": "rabbitmq_detailed_queue_messages_ready{queue=~\"$queue\"}",
           "legendFormat": "{{queue}}",
           "refId": "A"
         }
@@ -59,7 +59,7 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "rabbitmq_queue_messages_unacked{queue=~\"$queue\"}",
+          "expr": "rabbitmq_detailed_queue_messages_unacked{queue=~\"$queue\"}",
           "legendFormat": "{{queue}}",
           "refId": "A"
         }
@@ -75,7 +75,7 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "rabbitmq_queue_consumers{queue=~\"$queue\"}",
+          "expr": "rabbitmq_detailed_queue_consumers{queue=~\"$queue\"}",
           "legendFormat": "{{queue}}",
           "refId": "A"
         }
@@ -101,7 +101,7 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "sum(rate(rabbitmq_channel_messages_published_total[1m]))",
+          "expr": "sum(rate(rabbitmq_detailed_channel_messages_published_total[1m]))",
           "legendFormat": "published/s",
           "refId": "A"
         }
@@ -117,7 +117,7 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "rate(rabbitmq_queue_messages_delivered_total{queue=~\"$queue\"}[1m])",
+          "expr": "rate(rabbitmq_detailed_queue_messages_delivered_total{queue=~\"$queue\"}[1m])",
           "legendFormat": "deliver / {{queue}}",
           "refId": "A"
         }
@@ -133,7 +133,7 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "rate(rabbitmq_queue_messages_acked_total{queue=~\"$queue\"}[1m])",
+          "expr": "rate(rabbitmq_detailed_queue_messages_acked_total{queue=~\"$queue\"}[1m])",
           "legendFormat": "ack / {{queue}}",
           "refId": "A"
         }
@@ -149,7 +149,7 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "rabbitmq_queue_messages_ready{queue=~\"ranking.grading.completed|streak.grading.completed|streak.interview.completed\"}",
+          "expr": "rabbitmq_detailed_queue_messages_ready{queue=~\"ranking.grading.completed|streak.grading.completed|streak.interview.completed\"}",
           "legendFormat": "{{queue}}",
           "refId": "A"
         }

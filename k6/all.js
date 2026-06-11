@@ -105,32 +105,42 @@ export function setup() {
 
   if (MODULE === 'all' || MODULE === 'grading') {
     dbg(`[setup] grading 풀 수집 시작 (샘플 ${GRADING_POOL_SAMPLES}명)`);
+
+    // step 1: grading/list 일괄 요청
+    const listReqs = [];
     for (let i = 0; i < GRADING_POOL_SAMPLES; i++) {
       const token = tokens[i % tokens.length];
-      const headers = DEFAULT_HEADERS(token);
+      listReqs.push(['GET', `${BASE_URL}/v1/quiz/grading/list`, null, { headers: DEFAULT_HEADERS(token) }]);
+    }
+    const listResps = http.batch(listReqs);
 
-      // gradingLogId 목록 수집
-      const listRes = http.get(`${BASE_URL}/v1/quiz/grading/list`, { headers });
-      if (listRes.status !== 200) continue;
-
+    // 유효한 list 응답만 추출
+    const listData = [];
+    for (let i = 0; i < listResps.length; i++) {
+      const res = listResps[i];
+      if (res.status !== 200) continue;
       let logs;
-      try { logs = JSON.parse(listRes.body).data; } catch (_) { continue; }
+      try { logs = JSON.parse(res.body).data; } catch (_) { continue; }
       if (!Array.isArray(logs) || logs.length === 0) continue;
+      listData.push({ token: tokens[i % tokens.length], logs, firstLogId: logs[0].id });
+    }
 
-      // 첫 번째 로그로 quizId 확보 (단답형 우선)
-      const firstLogId = logs[0].id;
+    // step 2: 첫 번째 logId 상세 일괄 요청 (단답형 quizId 확보용)
+    const detailReqs = listData.map(({ token, firstLogId }) => [
+      'GET', `${BASE_URL}/v1/quiz/grading/${firstLogId}`, null, { headers: DEFAULT_HEADERS(token) },
+    ]);
+    const detailResps = http.batch(detailReqs);
+
+    for (let i = 0; i < listData.length; i++) {
+      const { token, logs } = listData[i];
       let quizId = null;
-
-      const detailRes = http.get(`${BASE_URL}/v1/quiz/grading/${firstLogId}`, { headers });
-      if (detailRes.status === 200) {
+      if (detailResps[i].status === 200) {
         try {
-          const results = JSON.parse(detailRes.body).data?.gradingResults;
+          const results = JSON.parse(detailResps[i].body).data?.gradingResults;
           const shortItem = results?.find((r) => r.quizType === '단답형');
           quizId = shortItem?.quizId ?? results?.[0]?.quizId ?? null;
-        } catch (_) { /* skip */ }
+        } catch (_) {}
       }
-
-      // 모든 logId 를 풀에 추가 (quizId 는 첫 번째에만 붙임)
       logs.forEach((log, idx) => {
         gradingPool.push({ token, logId: log.id, quizId: idx === 0 ? quizId : null });
       });
@@ -147,23 +157,26 @@ export function setup() {
   if (MODULE === 'all' || MODULE === 'grading' || MODULE === 'quiz') {
     dbg(`[setup] answer 풀 수집 시작 (샘플 ${ANSWER_POOL_SAMPLES}명)`);
     const TOPIC_IDS = [1, 2, 3, 4, 5, 6];
+
+    const fetchReqs = [];
     for (let i = 0; i < ANSWER_POOL_SAMPLES; i++) {
-      const token    = tokens[i % tokens.length];
-      const headers  = DEFAULT_HEADERS(token);
-      const topicId  = TOPIC_IDS[i % TOPIC_IDS.length];
-
-      const fetchRes = http.post(
-        `${BASE_URL}/v1/quiz`,
+      const token   = tokens[i % tokens.length];
+      const topicId = TOPIC_IDS[i % TOPIC_IDS.length];
+      fetchReqs.push([
+        'POST', `${BASE_URL}/v1/quiz`,
         JSON.stringify({ topicIds: [topicId], mode: 'STANDARD' }),
-        { headers }
-      );
-      if (fetchRes.status !== 200) continue;
+        { headers: DEFAULT_HEADERS(token) },
+      ]);
+    }
+    const fetchResps = http.batch(fetchReqs);
 
+    for (const res of fetchResps) {
+      if (res.status !== 200) continue;
       try {
-        const result = JSON.parse(fetchRes.body).data;
+        const result = JSON.parse(res.body).data;
         const answers = buildAnswers(result);
         if (answers.length > 0) answerPool.push({ answers });
-      } catch (_) { /* skip */ }
+      } catch (_) {}
     }
     dbg(`[setup] answer 풀 ${answerPool.length}개 세트 수집`);
   }

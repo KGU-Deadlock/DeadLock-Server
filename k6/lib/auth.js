@@ -13,17 +13,23 @@ const KAKAO_ID_BASE = 1001;
  */
 export function buildTokenPool(size) {
   const poolSize = size || TOKEN_POOL_SIZE;
-  const tokens = [];
+
+  const requests = [];
   for (let i = 0; i < poolSize; i++) {
-    const kakaoId = KAKAO_ID_BASE + i;
-    const res = http.get(`${BASE_URL}/v1/dev/user-token?kakaoId=${kakaoId}`);
+    requests.push(['GET', `${BASE_URL}/v1/dev/user-token?kakaoId=${KAKAO_ID_BASE + i}`]);
+  }
+
+  const responses = http.batch(requests);
+  const tokens = [];
+  for (const res of responses) {
     if (res.status === 200) {
-      const body = JSON.parse(res.body);
-      if (body.data?.accessToken) {
-        tokens.push(body.data.accessToken);
-      }
+      try {
+        const body = JSON.parse(res.body);
+        if (body.data?.accessToken) tokens.push(body.data.accessToken);
+      } catch (_) {}
     }
   }
+
   if (tokens.length === 0) {
     throw new Error('[auth] 토큰 풀 생성 실패. dev-service 가 기동됐는지, 시드 데이터가 있는지 확인하세요.');
   }

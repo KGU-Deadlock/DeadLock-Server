@@ -3,9 +3,9 @@ param(
     [string]$Module          = "all",
     [int]   $TargetRps       = 100,
     [int]   $MaxVus          = 500,
-    [string]$ApiProfile      = "ops\perf\profiles\api.env",
-    [string]$DatasetProfile  = "ops\perf\profiles\dataset.env",
-    [string]$HardwareProfile = "ops\perf\profiles\hardware.env",
+    [string]$ApiProfile      = "ops/perf/profiles/api.env",
+    [string]$DatasetProfile  = "ops/perf/profiles/dataset.env",
+    [string]$HardwareProfile = "ops/perf/profiles/hardware.env",
     [string]$Gui             = "grafana",
     [switch]$KeepUp,
     [switch]$SkipInit,
@@ -71,7 +71,7 @@ param(
 
 $COMPOSE_FILE    = "docker-compose.perf.yml"
 $ENV_FILE        = ".env.perf"
-$PROFILE_JSON    = "k6\.perf-profile.json"
+$PROFILE_JSON    = "k6/.perf-profile.json"
 $HEALTH_URL      = "http://localhost:8081/actuator/health/readiness"
 $WIREMOCK_URL    = "http://localhost:8089/__admin/health"
 $STARTUP_TIMEOUT = 90
@@ -83,14 +83,14 @@ if ($Module -notin $VALID_MODULES) {
 }
 
 $TIMESTAMP    = Get-Date -Format "yyyyMMdd_HHmmss"
-$RESULTS_DIR  = "k6\results"
-$SUMMARY_FILE = "$RESULTS_DIR\$TIMESTAMP-summary.json"
+$RESULTS_DIR  = "k6/results"
+$SUMMARY_FILE = "$RESULTS_DIR/$TIMESTAMP-summary.json"
 
 New-Item -ItemType Directory -Force -Path $RESULTS_DIR | Out-Null
 
 # ── 데이터셋 확인 ────────────────────────────────────────────────
-$datasetDir  = "ops\perf\datasets\$Dataset"
-$datasetMeta = "$datasetDir\meta.json"
+$datasetDir  = "ops/perf/datasets/$Dataset"
+$datasetMeta = "$datasetDir/meta.json"
 if (-not (Test-Path $datasetDir)) {
     Write-Host ""
     Write-Host "데이터셋 '$Dataset' 을 찾을 수 없습니다." -ForegroundColor Red

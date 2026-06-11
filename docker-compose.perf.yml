@@ -1,3 +1,5 @@
+name: hellocs-perf
+
 ################################################################################
 # HelloCS — Perf MSA Compose
 # 서비스: gateway | user-service | topic-service | quiz-service |
@@ -34,8 +36,9 @@ services:
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "ping"]
       interval: 10s
-      timeout: 5s
+      timeout: 30s
       retries: 5
+      start_period: 30s
 
   redis:
     profiles: [app]
@@ -262,12 +265,6 @@ services:
         limits:
           memory: ${USER_MEMORY_LIMIT}
           cpus: '${USER_CPU_LIMIT}'
-    healthcheck:
-      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8091/actuator/health/readiness > /dev/null || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 30s
 
   topic-service:
     profiles: [app]
@@ -294,12 +291,6 @@ services:
         limits:
           memory: ${TOPIC_MEMORY_LIMIT}
           cpus: '${TOPIC_CPU_LIMIT}'
-    healthcheck:
-      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8092/actuator/health/readiness > /dev/null || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 30s
 
   quiz-service:
     profiles: [app]
@@ -330,20 +321,14 @@ services:
       rabbitmq:
         condition: service_healthy
       user-service:
-        condition: service_healthy
+        condition: service_started
       topic-service:
-        condition: service_healthy
+        condition: service_started
     deploy:
       resources:
         limits:
           memory: ${QUIZ_MEMORY_LIMIT}
           cpus: '${QUIZ_CPU_LIMIT}'
-    healthcheck:
-      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8093/actuator/health/readiness > /dev/null || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 30s
 
   interview-service:
     profiles: [extra]   # perf baseline 미사용. bake 는 docker-compose.perf.bake.yml 사용.
@@ -369,14 +354,8 @@ services:
     deploy:
       resources:
         limits:
-          memory: ${INTERVIEW_MEMORY_LIMIT}
-          cpus: '${INTERVIEW_CPU_LIMIT}'
-    healthcheck:
-      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8094/actuator/health/readiness > /dev/null || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 30s
+          memory: 1024m   # hardware.env 미정의 — bake 전용 리터럴 기본값
+          cpus: '0.5'
 
   ranking-service:
     profiles: [app]
@@ -399,18 +378,12 @@ services:
       rabbitmq:
         condition: service_healthy
       user-service:
-        condition: service_healthy
+        condition: service_started
     deploy:
       resources:
         limits:
           memory: ${RANKING_MEMORY_LIMIT}
           cpus: '${RANKING_CPU_LIMIT}'
-    healthcheck:
-      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8095/actuator/health/readiness > /dev/null || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 30s
 
   streak-service:
     profiles: [app]
@@ -436,12 +409,6 @@ services:
         limits:
           memory: ${STREAK_MEMORY_LIMIT}
           cpus: '${STREAK_CPU_LIMIT}'
-    healthcheck:
-      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8096/actuator/health/readiness > /dev/null || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 30s
 
   grading-service:
     profiles: [app]
@@ -468,18 +435,12 @@ services:
       rabbitmq:
         condition: service_healthy
       quiz-service:
-        condition: service_healthy
+        condition: service_started
     deploy:
       resources:
         limits:
           memory: ${GRADING_MEMORY_LIMIT}
           cpus: '${GRADING_CPU_LIMIT}'
-    healthcheck:
-      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8097/actuator/health/readiness > /dev/null || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 30s
 
   stt-service:
     profiles: [extra]   # perf baseline 미사용. bake 는 docker-compose.perf.bake.yml 사용.
@@ -501,14 +462,8 @@ services:
     deploy:
       resources:
         limits:
-          memory: ${STT_MEMORY_LIMIT}
-          cpus: '${STT_CPU_LIMIT}'
-    healthcheck:
-      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8098/actuator/health/readiness > /dev/null || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 30s
+          memory: 1024m   # hardware.env 미정의 — bake 전용 리터럴 기본값
+          cpus: '0.5'
 
   gateway:
     profiles: [app]
@@ -547,30 +502,24 @@ services:
       - "8081:8081"
     depends_on:
       user-service:
-        condition: service_healthy
+        condition: service_started
       topic-service:
-        condition: service_healthy
+        condition: service_started
       quiz-service:
-        condition: service_healthy
+        condition: service_started
       ranking-service:
-        condition: service_healthy
+        condition: service_started
       streak-service:
-        condition: service_healthy
+        condition: service_started
       grading-service:
-        condition: service_healthy
+        condition: service_started
       dev-service:
-        condition: service_healthy
+        condition: service_started
     deploy:
       resources:
         limits:
           memory: ${GATEWAY_MEMORY_LIMIT}
           cpus: '${GATEWAY_CPU_LIMIT}'
-    healthcheck:
-      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8081/actuator/health/readiness > /dev/null || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 6
-      start_period: 20s
 
   dev-service:
     profiles: [app]
@@ -597,28 +546,22 @@ services:
       rabbitmq:
         condition: service_healthy
       user-service:
-        condition: service_healthy
+        condition: service_started
       topic-service:
-        condition: service_healthy
+        condition: service_started
       quiz-service:
-        condition: service_healthy
+        condition: service_started
       grading-service:
-        condition: service_healthy
+        condition: service_started
       streak-service:
-        condition: service_healthy
+        condition: service_started
       ranking-service:
-        condition: service_healthy
+        condition: service_started
     deploy:
       resources:
         limits:
           memory: 512m
           cpus: '0.5'
-    healthcheck:
-      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8099/actuator/health/readiness > /dev/null || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 30s
 
   # ─── 부하테스트 지원 ────────────────────────────────────────
 
