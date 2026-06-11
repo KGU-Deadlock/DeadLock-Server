@@ -3,9 +3,11 @@ package com.deadlock.hellocs.dev.service;
 import com.deadlock.hellocs.dev.config.DevJwtTokenProvider;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
@@ -82,19 +84,10 @@ public class DevSeedService {
 
     // ─── 통계 시딩 (유저 + 채점 기록 + 스트릭 + 랭킹 위임) ──────────────────
 
-    /**
-     * 세그먼트 분포 모델 기반 통계 시딩.
-     * dataset.env 파라미터를 그대로 전달하며 다음 순서로 시딩한다:
-     * 1) user-service  : 유저 생성 (관심 토픽 포함)
-     * 2) grading-service: grading_logs bulk insert (이벤트 없음)
-     * 3) streak-service : streak records bulk write
-     * 4) ranking-service: ranking ZADD
-     */
     public SeedStatsResult seedStats(int users, int signupWindowDays, int quizPerDay, int numTopics,
                                      float segPowerShare, float segRegularShare,
                                      int segPowerDpw, int segRegularDpw, int segCasualDpw,
                                      int tokenPoolSize, long seed) {
-        // 1. 유저 생성
         SeedUsersResponse usersResp = userClient.post()
                 .uri(uri -> uri.path("/v1/internal/dev/users")
                         .queryParam("count",     users)
@@ -104,58 +97,30 @@ public class DevSeedService {
                 .body(SeedUsersApiResponse.class)
                 .data();
 
-        // 2. 채점 기록 시딩 (이벤트 없음 — 파생 데이터는 3,4에서 직접 생성)
+        List<UserActivitySpec> specs = buildUserSpecs(
+                users, tokenPoolSize, segPowerShare, segRegularShare,
+                segPowerDpw, segRegularDpw, segCasualDpw, signupWindowDays);
+
         SeedGradingLogsResponse gradingResp = gradingClient.post()
-                .uri(uri -> uri.path("/v1/internal/dev/grading-logs")
-                        .queryParam("users",            users)
-                        .queryParam("signupWindowDays", signupWindowDays)
-                        .queryParam("quizPerDay",       quizPerDay)
-                        .queryParam("numTopics",        numTopics)
-                        .queryParam("segPowerShare",    segPowerShare)
-                        .queryParam("segRegularShare",  segRegularShare)
-                        .queryParam("segPowerDpw",      segPowerDpw)
-                        .queryParam("segRegularDpw",    segRegularDpw)
-                        .queryParam("segCasualDpw",     segCasualDpw)
-                        .queryParam("tokenPoolSize",    tokenPoolSize)
-                        .queryParam("seed",             seed)
-                        .build())
+                .uri("/v1/internal/dev/grading-logs")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new SeedGradingLogsRequest(specs, quizPerDay, numTopics, seed))
                 .retrieve()
                 .body(SeedGradingLogsApiResponse.class)
                 .data();
 
-        // 3. 스트릭 기록 시딩
         SeedStreakResponse streakResp = streakClient.post()
-                .uri(uri -> uri.path("/v1/internal/dev/streak-records")
-                        .queryParam("users",            users)
-                        .queryParam("signupWindowDays", signupWindowDays)
-                        .queryParam("quizPerDay",       quizPerDay)
-                        .queryParam("numTopics",        numTopics)
-                        .queryParam("segPowerShare",    segPowerShare)
-                        .queryParam("segRegularShare",  segRegularShare)
-                        .queryParam("segPowerDpw",      segPowerDpw)
-                        .queryParam("segRegularDpw",    segRegularDpw)
-                        .queryParam("segCasualDpw",     segCasualDpw)
-                        .queryParam("tokenPoolSize",    tokenPoolSize)
-                        .build())
+                .uri("/v1/internal/dev/streak-records")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new SeedStreakRecordsRequest(specs, quizPerDay, numTopics))
                 .retrieve()
                 .body(SeedStreakApiResponse.class)
                 .data();
 
-        // 4. 랭킹 시딩
         SeedRankingResponse rankingResp = rankingClient.post()
-                .uri(uri -> uri.path("/v1/internal/dev/ranking")
-                        .queryParam("users",            users)
-                        .queryParam("signupWindowDays", signupWindowDays)
-                        .queryParam("quizPerDay",       quizPerDay)
-                        .queryParam("numTopics",        numTopics)
-                        .queryParam("segPowerShare",    segPowerShare)
-                        .queryParam("segRegularShare",  segRegularShare)
-                        .queryParam("segPowerDpw",      segPowerDpw)
-                        .queryParam("segRegularDpw",    segRegularDpw)
-                        .queryParam("segCasualDpw",     segCasualDpw)
-                        .queryParam("tokenPoolSize",    tokenPoolSize)
-                        .queryParam("seed",             seed)
-                        .build())
+                .uri("/v1/internal/dev/ranking")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new SeedRankingRequest(specs, quizPerDay, numTopics, seed))
                 .retrieve()
                 .body(SeedRankingApiResponse.class)
                 .data();
@@ -204,58 +169,33 @@ public class DevSeedService {
                                               float segPowerShare, float segRegularShare,
                                               int segPowerDpw, int segRegularDpw, int segCasualDpw,
                                               int tokenPoolSize, long seed) {
+        List<UserActivitySpec> specs = buildUserSpecs(
+                users, tokenPoolSize, segPowerShare, segRegularShare,
+                segPowerDpw, segRegularDpw, segCasualDpw, signupWindowDays);
+
         seedActivityProgress.setPhase(SeedActivityProgress.Phase.GRADING);
         SeedGradingLogsResponse gradingResp = gradingClient.post()
-                .uri(uri -> uri.path("/v1/internal/dev/grading-logs")
-                        .queryParam("users",            users)
-                        .queryParam("signupWindowDays", signupWindowDays)
-                        .queryParam("quizPerDay",       quizPerDay)
-                        .queryParam("numTopics",        numTopics)
-                        .queryParam("segPowerShare",    segPowerShare)
-                        .queryParam("segRegularShare",  segRegularShare)
-                        .queryParam("segPowerDpw",      segPowerDpw)
-                        .queryParam("segRegularDpw",    segRegularDpw)
-                        .queryParam("segCasualDpw",     segCasualDpw)
-                        .queryParam("tokenPoolSize",    tokenPoolSize)
-                        .queryParam("seed",             seed)
-                        .build())
+                .uri("/v1/internal/dev/grading-logs")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new SeedGradingLogsRequest(specs, quizPerDay, numTopics, seed))
                 .retrieve()
                 .body(SeedGradingLogsApiResponse.class)
                 .data();
 
         seedActivityProgress.setPhase(SeedActivityProgress.Phase.STREAK);
         SeedStreakResponse streakResp = streakClient.post()
-                .uri(uri -> uri.path("/v1/internal/dev/streak-records")
-                        .queryParam("users",            users)
-                        .queryParam("signupWindowDays", signupWindowDays)
-                        .queryParam("quizPerDay",       quizPerDay)
-                        .queryParam("numTopics",        numTopics)
-                        .queryParam("segPowerShare",    segPowerShare)
-                        .queryParam("segRegularShare",  segRegularShare)
-                        .queryParam("segPowerDpw",      segPowerDpw)
-                        .queryParam("segRegularDpw",    segRegularDpw)
-                        .queryParam("segCasualDpw",     segCasualDpw)
-                        .queryParam("tokenPoolSize",    tokenPoolSize)
-                        .build())
+                .uri("/v1/internal/dev/streak-records")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new SeedStreakRecordsRequest(specs, quizPerDay, numTopics))
                 .retrieve()
                 .body(SeedStreakApiResponse.class)
                 .data();
 
         seedActivityProgress.setPhase(SeedActivityProgress.Phase.RANKING);
         SeedRankingResponse rankingResp = rankingClient.post()
-                .uri(uri -> uri.path("/v1/internal/dev/ranking")
-                        .queryParam("users",            users)
-                        .queryParam("signupWindowDays", signupWindowDays)
-                        .queryParam("quizPerDay",       quizPerDay)
-                        .queryParam("numTopics",        numTopics)
-                        .queryParam("segPowerShare",    segPowerShare)
-                        .queryParam("segRegularShare",  segRegularShare)
-                        .queryParam("segPowerDpw",      segPowerDpw)
-                        .queryParam("segRegularDpw",    segRegularDpw)
-                        .queryParam("segCasualDpw",     segCasualDpw)
-                        .queryParam("tokenPoolSize",    tokenPoolSize)
-                        .queryParam("seed",             seed)
-                        .build())
+                .uri("/v1/internal/dev/ranking")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new SeedRankingRequest(specs, quizPerDay, numTopics, seed))
                 .retrieve()
                 .body(SeedRankingApiResponse.class)
                 .data();
@@ -319,6 +259,87 @@ public class DevSeedService {
         }
     }
 
+    // ─── 세그먼트 레이아웃 (단일 정의) ────────────────────────────────────────
+
+    private List<UserActivitySpec> buildUserSpecs(int users, int tokenPoolSize,
+            float segPowerShare, float segRegularShare,
+            int segPowerDpw, int segRegularDpw, int segCasualDpw,
+            int signupWindowDays) {
+        SegmentLayout layout = new SegmentLayout(users, tokenPoolSize, segPowerShare, segRegularShare);
+        List<UserActivitySpec> specs = new ArrayList<>(users);
+        for (int idx = 0; idx < users; idx++) {
+            long kakaoId    = 1001L + idx;
+            int  dpw        = layout.dpwOf(idx, segPowerDpw, segRegularDpw, segCasualDpw);
+            int  accountAge = layout.accountAgeDays(idx, signupWindowDays);
+            specs.add(new UserActivitySpec(kakaoId, dpw, accountAge));
+        }
+        return specs;
+    }
+
+    private static final class SegmentLayout {
+
+        private final int users, tokenPoolSize;
+        private final int poolPower, poolRegular, poolCasual;
+        private final int totalPower, totalRegular;
+        private final int bgPower, bgRegular;
+
+        SegmentLayout(int users, int tokenPoolSize, float powerShare, float regularShare) {
+            this.users         = users;
+            this.tokenPoolSize = Math.min(tokenPoolSize, users);
+            this.poolPower     = (int) (this.tokenPoolSize * powerShare);
+            this.poolRegular   = (int) (this.tokenPoolSize * regularShare);
+            this.poolCasual    = this.tokenPoolSize - this.poolPower - this.poolRegular;
+            this.totalPower    = (int) (users * powerShare);
+            this.totalRegular  = (int) (users * regularShare);
+            this.bgPower       = Math.max(0, totalPower   - poolPower);
+            this.bgRegular     = Math.max(0, totalRegular - poolRegular);
+        }
+
+        int dpwOf(int idx, int powerDpw, int regularDpw, int casualDpw) {
+            return switch (segmentOf(idx)) {
+                case POWER   -> powerDpw;
+                case REGULAR -> regularDpw;
+                case CASUAL  -> casualDpw;
+            };
+        }
+
+        int accountAgeDays(int idx, int signupWindowDays) {
+            int[] segInfo = segmentIdxAndSize(idx);
+            int segIdx  = segInfo[0];
+            int segSize = segInfo[1];
+            if (segSize <= 1) return signupWindowDays;
+            return (segSize - 1 - segIdx) * signupWindowDays / (segSize - 1);
+        }
+
+        private Segment segmentOf(int idx) {
+            if (idx < poolPower)                   return Segment.POWER;
+            if (idx < poolPower + poolRegular)     return Segment.REGULAR;
+            if (idx < tokenPoolSize)               return Segment.CASUAL;
+            int bgIdx = idx - tokenPoolSize;
+            if (bgIdx < bgPower)                   return Segment.POWER;
+            if (bgIdx < bgPower + bgRegular)       return Segment.REGULAR;
+            return Segment.CASUAL;
+        }
+
+        private int[] segmentIdxAndSize(int idx) {
+            if (idx < poolPower)
+                return new int[]{ idx, poolPower };
+            if (idx < poolPower + poolRegular)
+                return new int[]{ idx - poolPower, poolRegular };
+            if (idx < tokenPoolSize)
+                return new int[]{ idx - poolPower - poolRegular, poolCasual };
+            int bgIdx = idx - tokenPoolSize;
+            if (bgIdx < bgPower)
+                return new int[]{ bgIdx, bgPower };
+            if (bgIdx < bgPower + bgRegular)
+                return new int[]{ bgIdx - bgPower, bgRegular };
+            int bgCasual = users - tokenPoolSize - bgPower - bgRegular;
+            return new int[]{ bgIdx - bgPower - bgRegular, Math.max(1, bgCasual) };
+        }
+
+        enum Segment { POWER, REGULAR, CASUAL }
+    }
+
     // ─── 결과 레코드 ───────────────────────────────────────────────────────────
 
     public record SeedTopicsResult(int created, int alreadyExisted) {}
@@ -333,7 +354,6 @@ public class DevSeedService {
 
     public record ActivityProgressResult(String phase, long elapsedSeconds, GradingProgressData grading) {}
 
-    /** 통계 시딩 결과 (4-서비스 통합). */
     public record SeedStatsResult(
             int usersCreated,
             int gradingDocsCreated,
@@ -343,6 +363,13 @@ public class DevSeedService {
 
     public record AdminTokenResult(String accessToken, String refreshToken, boolean isUser) {}
     public record UserTokenResult(String accessToken, String refreshToken, boolean isUser) {}
+
+    // ─── 내부 DTO (요청 바디) ──────────────────────────────────────────────────
+
+    private record UserActivitySpec(long kakaoId, int dpw, int accountAgeDays) {}
+    private record SeedGradingLogsRequest(List<UserActivitySpec> users, int quizPerDay, int numTopics, long seed) {}
+    private record SeedStreakRecordsRequest(List<UserActivitySpec> users, int quizPerDay, int numTopics) {}
+    private record SeedRankingRequest(List<UserActivitySpec> users, int quizPerDay, int numTopics, long seed) {}
 
     // ─── 내부 응답 역직렬화용 레코드 ──────────────────────────────────────────
 

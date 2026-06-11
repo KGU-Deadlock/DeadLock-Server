@@ -1,7 +1,7 @@
 /**
  * all.js — HelloCS 통합 부하테스트 엔트리.
  *
- * api.env 의 RATIO_*/P95_* 를 run.ps1 이 .perf-profile.json 으로 변환하면
+ * api.env 의 RATIO_* / P95_* 를 run.ps1 이 .perf-profile.json 으로 변환하면
  * 이 스크립트가 init 단계에서 읽어 12개 시나리오와 임계값을 동적 생성한다.
  *
  * TARGET_RPS × (RATIO / 100) = 각 엔드포인트의 목표 RPS.
@@ -11,10 +11,10 @@ import http from 'k6/http';
 import {
   BASE_URL, DEFAULT_HEADERS,
   TARGET_RPS, MODULE, MAX_VUS, SETUP_TIMEOUT,
-  TOKEN_POOL_SIZE, SKIP_SEED, DEBUG,
+  TOKEN_POOL_SIZE, DEBUG,
 } from './lib/config.js';
 import { buildTokenPool, pickToken } from './lib/auth.js';
-import { checkWiremock, seedData, verifyAiRouting } from './lib/init.js';
+import { checkWiremock, verifyAiRouting } from './lib/init.js';
 import { PROFILE } from './lib/profile.js';
 import { REGISTRY } from './lib/endpoints.js';
 import {
@@ -81,8 +81,6 @@ export const options = {
 
 export function setup() {
   checkWiremock();
-  if (!SKIP_SEED) seedData();
-
   // 1. 토큰 풀 생성
   const poolSize = PROFILE.tokenPool?.size ?? TOKEN_POOL_SIZE;
   const tokens   = buildTokenPool(poolSize);

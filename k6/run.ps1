@@ -104,7 +104,7 @@ function Read-EnvFile($path) {
     if (-not (Test-Path $path)) { return $map }
     Get-Content $path | ForEach-Object {
         if ($_ -match '^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$' -and $_ -notmatch '^\s*#') {
-            $map[$Matches[1]] = $Matches[2].Trim()
+            $map[$Matches[1]] = ($Matches[2] -replace '\s*#.*$', '').Trim()
         }
     }
     return $map
@@ -129,8 +129,8 @@ $EP_NAMES = @(
 
 $endpointsMap = [ordered]@{}
 foreach ($ep in $EP_NAMES) {
-    $ratio = if ($api.ContainsKey("RATIO_$ep")) { [int]$api["RATIO_$ep"] } else { 0 }
-    $p95Raw = if ($api.ContainsKey("P95_$ep"))  { $api["P95_$ep"]         } else { "" }
+    $ratio = if ($api.Contains("RATIO_$ep")) { [int]$api["RATIO_$ep"] } else { 0 }
+    $p95Raw = if ($api.Contains("P95_$ep"))  { $api["P95_$ep"]         } else { "" }
     $p95    = if ($p95Raw -match '^\d+$')       { [int]$p95Raw            } else { $null }
     $endpointsMap[$ep] = [ordered]@{ ratio = $ratio; p95 = $p95 }
 }

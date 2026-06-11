@@ -2,7 +2,7 @@
  * endpoints.js — 12개 엔드포인트 정적 레지스트리.
  *
  * 각 항목:
- *   name   — api.env의 RATIO_*/P95_* 키 (대문자, 언더스코어 구분)
+ *   name   — api.env의 RATIO_* / P95_* 키 (대문자, 언더스코어 구분)
  *   module — 모듈 필터(-Module 파라미터)에 사용
  *   tag    — k6 메트릭 태그 (http_req_duration{name:...})
  *   exec   — all.js에서 export 하는 핸들러 함수명 (k6 scenarios.exec 값)
