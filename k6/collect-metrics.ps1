@@ -74,36 +74,33 @@ function mxv($res) {
 }
 
 # ── 4. 관제 토폴로지 정의 ─────────────────────────────────────────────────────
-# 모듈별 관제 — 9개 서비스 (application 라벨 기준)
+# 모듈별 관제 — 7개 서비스 baseline (application 라벨 기준)
+# interview-service / stt-service 는 extra 프로파일 — baseline 미가동
 $services = @(
-    @{ name="gateway";           app="gateway";            hasDB=$false },
-    @{ name="user-service";      app="user-service";       hasDB=$true  },
-    @{ name="topic-service";     app="topic-service";      hasDB=$true  },
-    @{ name="quiz-service";      app="quiz-service";       hasDB=$true  },
-    @{ name="interview-service"; app="interview-service";  hasDB=$true  },
-    @{ name="ranking-service";   app="ranking-service";    hasDB=$false },
-    @{ name="streak-service";    app="streak-service";     hasDB=$false },
-    @{ name="grading-service";   app="grading-service";    hasDB=$false },
-    @{ name="stt-service";       app="stt-service";        hasDB=$false }
+    @{ name="gateway";        app="gateway";        hasDB=$false },
+    @{ name="user-service";   app="user-service";   hasDB=$true  },
+    @{ name="topic-service";  app="topic-service";  hasDB=$true  },
+    @{ name="quiz-service";   app="quiz-service";   hasDB=$true  },
+    @{ name="ranking-service"; app="ranking-service"; hasDB=$false },
+    @{ name="streak-service"; app="streak-service"; hasDB=$false },
+    @{ name="grading-service"; app="grading-service"; hasDB=$false }
 )
 
-# DB별 관제 — PostgreSQL 4개 DB (DB당 postgres_exporter)
+# DB별 관제 — PostgreSQL 3개 DB (DB당 postgres_exporter)
 $pgDbs = @(
-    @{ svc="user";      datname=$env:USER_POSTGRES_DB;      job="postgres-user"      },
-    @{ svc="topic";     datname=$env:TOPIC_POSTGRES_DB;     job="postgres-topic"     },
-    @{ svc="quiz";      datname=$env:QUIZ_POSTGRES_DB;      job="postgres-quiz"      },
-    @{ svc="interview"; datname=$env:INTERVIEW_POSTGRES_DB; job="postgres-interview" }
+    @{ svc="user";  datname=$env:USER_POSTGRES_DB;  job="postgres-user"  },
+    @{ svc="topic"; datname=$env:TOPIC_POSTGRES_DB; job="postgres-topic" },
+    @{ svc="quiz";  datname=$env:QUIZ_POSTGRES_DB;  job="postgres-quiz"  }
 )
 
 # 채점 이벤트 체인 — RabbitMQ 큐 (grading.completed 팬아웃 → ranking + streak)
 $queues = @(
     "ranking.grading.completed",
-    "streak.grading.completed",
-    "streak.interview.completed"
+    "streak.grading.completed"
 )
 
 # 아웃바운드 호출 소스 서비스 (http_client_requests 계측 시)
-$httpClients = @("quiz-service", "ranking-service", "grading-service", "interview-service")
+$httpClients = @("quiz-service", "ranking-service", "grading-service")
 
 # ── 5. Summary / threshold / check helpers ────────────────────────────────────
 function getm($name) {

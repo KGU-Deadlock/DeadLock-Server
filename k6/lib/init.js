@@ -2,15 +2,11 @@ import http from 'k6/http';
 import {
   BASE_URL,
   WIREMOCK_URL,
-  SEED_USER_COUNT,
-  SEED_DAYS,
-  SEED_QUIZ_PER_COMBO,
-  SKIP_SEED,
   SKIP_WIREMOCK_CHECK,
   DEBUG,
 } from './config.js';
 
-const dbg = (...args) => { if (DEBUG) dbg(...args); };
+const dbg = (...args) => { if (DEBUG) console.log(...args); };
 
 /**
  * WireMock이 정상 동작 중인지 확인.
@@ -100,50 +96,4 @@ export function verifyAiRouting(token) {
   }
 
   dbg('[init] AI 라우팅 정상 — WireMock으로 요청 확인됨');
-}
-
-/**
- * 시드 데이터 자동 초기화.
- * 각 시드 API는 멱등(이미 있으면 skip)이므로 매 실행마다 호출해도 안전.
- */
-export function seedData() {
-  if (SKIP_SEED) {
-    dbg('[init] 시드 스킵 (SKIP_SEED=true)');
-    return;
-  }
-
-  dbg(`[init] 시드 시작 — 유저 ${SEED_USER_COUNT}명 / ${SEED_DAYS}일치 통계`);
-
-  let res;
-
-  res = http.post(`${BASE_URL}/v1/dev/seed/topics`);
-  dbg(`[seed/topics] HTTP ${res.status} → ${res.body}`);
-  if (res.status !== 200) {
-    throw new Error(`[init] topics 시드 실패`);
-  }
-
-  res = http.post(`${BASE_URL}/v1/dev/seed/quiz-bank?perCombo=${SEED_QUIZ_PER_COMBO}`);
-  dbg(`[seed/quiz-bank] HTTP ${res.status} → ${res.body}`);
-  if (res.status !== 200) {
-    throw new Error(`[init] quiz-bank 시드 실패`);
-  }
-
-  res = http.post(`${BASE_URL}/v1/dev/seed/cs-questions?perCategory=10`);
-  dbg(`[seed/cs-questions] HTTP ${res.status} → ${res.body}`);
-  if (res.status !== 200) {
-    throw new Error(`[init] cs-questions 시드 실패`);
-  }
-
-  dbg(`[seed/stats] 시작 — 오래 걸릴 수 있습니다 (유저 ${SEED_USER_COUNT}명 × ${SEED_DAYS}일)`);
-  res = http.post(
-    `${BASE_URL}/v1/dev/seed/stats?userCount=${SEED_USER_COUNT}&days=${SEED_DAYS}`,
-    null,
-    { timeout: '600s' }
-  );
-  dbg(`[seed/stats] HTTP ${res.status} → ${res.body}`);
-  if (res.status !== 200) {
-    throw new Error(`[init] stats 시드 실패`);
-  }
-
-  dbg('[init] 시드 완료');
 }

@@ -174,7 +174,7 @@ services:
       retries: 5
 
   postgres-interview:
-    profiles: [extra]   # baseline 미사용 (bake 전용). bake는 --profile app --profile extra 로 기동.
+    profiles: [extra]   # perf baseline 미사용. bake 는 docker-compose.perf.bake.yml 사용.
     image: postgres:17-alpine
     command:
       - "postgres"
@@ -251,6 +251,7 @@ services:
       USER_SERVICE_URL: http://user-service:8081
       TOPIC_SERVICE_URL: http://topic-service:8082
       TEMPO_HOST: tempo
+      JAVA_OPTS: "-XX:MaxRAMPercentage=70"
     depends_on:
       postgres-user:
         condition: service_healthy
@@ -284,6 +285,7 @@ services:
       POSTGRES_PORT: 5432
       POSTGRES_DB: ${TOPIC_POSTGRES_DB}
       TEMPO_HOST: tempo
+      JAVA_OPTS: "-XX:MaxRAMPercentage=70"
     depends_on:
       postgres-topic:
         condition: service_healthy
@@ -317,6 +319,7 @@ services:
       USER_SERVICE_URL: http://user-service:8081
       TOPIC_SERVICE_URL: http://topic-service:8082
       TEMPO_HOST: tempo
+      JAVA_OPTS: "-XX:MaxRAMPercentage=70"
     depends_on:
       postgres-quiz:
         condition: service_healthy
@@ -343,7 +346,7 @@ services:
       start_period: 30s
 
   interview-service:
-    profiles: [extra]   # baseline 미사용 (bake 전용)
+    profiles: [extra]   # perf baseline 미사용. bake 는 docker-compose.perf.bake.yml 사용.
     build:
       context: .
       dockerfile: interview/Dockerfile
@@ -389,6 +392,7 @@ services:
       MANAGEMENT_PORT: 8095
       USER_SERVICE_URL: http://user-service:8081
       TEMPO_HOST: tempo
+      JAVA_OPTS: "-XX:MaxRAMPercentage=70"
     depends_on:
       redis:
         condition: service_healthy
@@ -421,6 +425,7 @@ services:
       SERVER_PORT: 8086
       MANAGEMENT_PORT: 8096
       TEMPO_HOST: tempo
+      JAVA_OPTS: "-XX:MaxRAMPercentage=70"
     depends_on:
       mongo:
         condition: service_healthy
@@ -454,6 +459,7 @@ services:
       TOPIC_SERVICE_URL: http://topic-service:8082
       QUIZ_SERVICE_URL: http://quiz-service:8083
       TEMPO_HOST: tempo
+      JAVA_OPTS: "-XX:MaxRAMPercentage=70"
     depends_on:
       redis:
         condition: service_healthy
@@ -476,7 +482,7 @@ services:
       start_period: 30s
 
   stt-service:
-    profiles: [extra]   # baseline 미사용 (bake 전용)
+    profiles: [extra]   # perf baseline 미사용. bake 는 docker-compose.perf.bake.yml 사용.
     build:
       context: .
       dockerfile: stt/Dockerfile
@@ -535,6 +541,7 @@ services:
       DEV_SERVICE_HOST: dev-service
       DEV_SERVICE_PORT: 8090
       TEMPO_HOST: tempo
+      JAVA_OPTS: "-XX:MaxRAMPercentage=70"
     ports:
       - "8080:8080"
       - "8081:8081"
@@ -582,7 +589,10 @@ services:
       QUIZ_SERVICE_URL: http://quiz-service:8083
       INTERVIEW_SERVICE_URL: http://interview-service:8084
       GRADING_SERVICE_URL: http://grading-service:8087
+      STREAK_SERVICE_URL: http://streak-service:8086
+      RANKING_SERVICE_URL: http://ranking-service:8085
       TEMPO_HOST: tempo
+      JAVA_OPTS: "-XX:MaxRAMPercentage=70"   # SUT 예산 외, 토큰 발급 전용
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -593,6 +603,10 @@ services:
       quiz-service:
         condition: service_healthy
       grading-service:
+        condition: service_healthy
+      streak-service:
+        condition: service_healthy
+      ranking-service:
         condition: service_healthy
     deploy:
       resources:
@@ -664,7 +678,7 @@ services:
         condition: service_healthy
 
   postgres_exporter_interview:
-    profiles: [extra]   # interview-service와 동일하게 baseline 제외
+    profiles: [extra]   # perf baseline 미사용. bake 는 docker-compose.perf.bake.yml 사용.
     image: prometheuscommunity/postgres-exporter
     environment:
       DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-interview:5432/${INTERVIEW_POSTGRES_DB}?sslmode=disable"

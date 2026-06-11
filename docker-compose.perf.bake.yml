@@ -1,133 +1,517 @@
 ################################################################################
-# HelloCS — Perf Bake 오버라이드
+# HelloCS — Perf Bake (독립 Compose)
 #
-# docker-compose.perf.yml 위에 겹쳐 적용하는 오버라이드.
-# Bake(데이터 생성) 모드에서만 달라지는 설정만 포함한다:
-#   - JPA 4종: ddl-auto=create (빈 스키마에서 새로 생성)
-#   - 빠른 기동: lazy-init + 헬스체크 인터벌 단축(10s→3s)
-#   - 시딩 throughput 확보: CPU/메모리 한도 완화 (perf 측정용 throttle 무력화)
+# 데이터셋 생성 전용. 성능 측정용 리소스 제한 없음 — 최대한 빠르게 굽는 것이 목표.
+# perf 테스트(run.ps1)는 docker-compose.perf.yml 만 사용한다.
 #
-# ⚠️ perf 측정값에 영향을 주는 설정(리소스 한도·lazy-init)은 절대 base
-#    (docker-compose.perf.yml)에 넣지 않는다. 이 파일은 bake 전용이며,
-#    perf 테스트(run.ps1)는 이 오버라이드 없이 base 만 사용한다.
+# docker-compose.perf.yml 과 독립적으로 구성되므로 오버라이드 머지 없음.
+# interview-service / stt-service 도 bake 에 포함 (perf baseline 에서만 제외).
 #
 # 사용:
-#   wsl docker compose -p hellocs-bake --env-file .env.perf \
-#     -f docker-compose.perf.yml -f docker-compose.perf.bake.yml --profile app ...
+#   wsl env "DATASET=" docker compose -p hellocs-bake --env-file .env.perf \
+#     -f docker-compose.perf.bake.yml --profile app up -d --build
 #
 # DATASET="" 로 기동하면 02-load-dataset.sh / redis-seed.sh / mongo-seed.sh 모두 no-op.
 ################################################################################
 
 # ── 공통 프래그먼트 (YAML 앵커) ───────────────────────────────────────────────
 
-# 헬스체크 타이밍만 덮어씀 — base 의 test 명령은 compose 병합으로 보존된다.
-# 직렬 의존성 체인(인프라→user/topic→quiz→dev→gateway)이라 단계마다 감지가
-# 빨라지면 누적 절약이 크다.
-x-fast-health: &fast-health
-  interval: 3s
+# 인프라 헬스체크 — 빠른 감지, start_period 불필요 (DB/MQ 는 기동이 빠름)
+x-infra-health: &infra-health
+  interval: 5s
   timeout: 5s
   retries: 20
+
+# 앱 헬스체크 — JVM 워밍업을 고려한 start_period, 감지 인터벌은 단축
+x-app-health: &app-health
+  interval: 3s
+  timeout: 5s
+  retries: 30
   start_period: 30s
 
-# bake 리소스 완화 — bake 는 성능 측정이 아니므로 throttle 불필요.
-# WSL 8코어 기준, 단일 컨테이너가 최대 2코어까지 쓸 수 있도록 캡만 상향(예약 아님).
-x-bake-deploy: &bake-deploy
-  resources:
-    limits:
-      cpus: '2.0'
-      memory: 768m
-
-# JVM: 완화된 메모리 한도에 맞춰 힙 비중 상향(시딩 중 GC 부담 감소).
-# 시딩 루프는 정상 상태 처리량이 중요하므로 TieredStopAtLevel 등 startup-only
-# 옵션은 쓰지 않는다(C2 JIT 유지).
-x-bake-java-opts: &bake-java-opts "-XX:MaxRAMPercentage=65"
+# JVM: 리소스 제한 없으므로 힙 비중 높여 GC 부담 감소 (시딩 루프 throughput 확보)
+x-bake-java-opts: &bake-java-opts "-XX:MaxRAMPercentage=75"
 
 services:
 
-  # ── 데이터스토어: 시딩 쓰기 throughput 확보 (CPU/메모리 완화) ─────
-  postgres-user:
-    deploy: *bake-deploy
-  postgres-topic:
-    deploy: *bake-deploy
-  postgres-quiz:
-    deploy: *bake-deploy
-  postgres-interview:
-    deploy: *bake-deploy
-  redis:
-    deploy: *bake-deploy
-  mongo:
-    deploy: *bake-deploy
+  # ─────────────────────────────────────────────────────────────
+  # 공유 인프라 (리소스 제한 없음)
+  # ─────────────────────────────────────────────────────────────
 
-  # ── JPA 4종: ddl-auto=create + lazy-init + 완화 + 빠른 헬스체크 ──
-  user-service:
+  rabbitmq:
+    profiles: [app]
+    image: rabbitmq:4.0-management-alpine
     environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    volumes:
+      - ./ops/rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      <<: *infra-health
+
+  redis:
+    profiles: [app]
+    image: redis:7.4-alpine
+    command: ["redis-server", "--appendonly", "no", "--save", ""]
+    volumes:
+      - redis-bake-data:/data
+    depends_on:
+      redis-seeder:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      <<: *infra-health
+
+  mongo:
+    profiles: [app]
+    image: mongo:8.0
+    environment:
+      MONGO_INITDB_DATABASE: ${MONGO_DB}
+    volumes:
+      - mongo-bake-data:/data/db
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval \"db.adminCommand('ping').ok\" | grep -q 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+
+  # ─── 서비스별 전용 Postgres (bake 는 성능 분석 불필요 — 쿼리 로깅/stat 미적용) ──
+
+  postgres-user:
+    profiles: [app]
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${USER_POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      DATASET: ${DATASET}
+      DATASET_PG_FILE: postgres-user.sql
+    volumes:
+      - postgres-user-bake-data:/var/lib/postgresql/data
+      - ./ops/postgres/init:/docker-entrypoint-initdb.d:ro
+      - ./ops/perf/datasets:/perf-datasets:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${USER_POSTGRES_DB}"]
+      <<: *infra-health
+
+  postgres-topic:
+    profiles: [app]
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${TOPIC_POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      DATASET: ${DATASET}
+      DATASET_PG_FILE: postgres-topic.sql
+    volumes:
+      - postgres-topic-bake-data:/var/lib/postgresql/data
+      - ./ops/postgres/init:/docker-entrypoint-initdb.d:ro
+      - ./ops/perf/datasets:/perf-datasets:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${TOPIC_POSTGRES_DB}"]
+      <<: *infra-health
+
+  postgres-quiz:
+    profiles: [app]
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${QUIZ_POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      DATASET: ${DATASET}
+      DATASET_PG_FILE: postgres-quiz.sql
+    volumes:
+      - postgres-quiz-bake-data:/var/lib/postgresql/data
+      - ./ops/postgres/init:/docker-entrypoint-initdb.d:ro
+      - ./ops/perf/datasets:/perf-datasets:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${QUIZ_POSTGRES_DB}"]
+      <<: *infra-health
+
+  postgres-interview:
+    profiles: [app]
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${INTERVIEW_POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      DATASET: ${DATASET}
+      DATASET_PG_FILE: postgres-interview.sql
+    volumes:
+      - postgres-interview-bake-data:/var/lib/postgresql/data
+      - ./ops/postgres/init:/docker-entrypoint-initdb.d:ro
+      - ./ops/perf/datasets:/perf-datasets:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${INTERVIEW_POSTGRES_DB}"]
+      <<: *infra-health
+
+  # ─── 시딩 ────────────────────────────────────────────────────
+
+  redis-seeder:
+    profiles: [app]
+    image: redis:7.4-alpine
+    environment:
+      DATASET: ${DATASET}
+    entrypoint: ["sh", "/seed/redis-seed.sh"]
+    volumes:
+      - redis-bake-data:/data
+      - ./ops/perf/datasets:/perf-datasets:ro
+      - ./ops/perf/seeders/redis-seed.sh:/seed/redis-seed.sh:ro
+
+  mongo-seeder:
+    profiles: [app]
+    image: mongo:8.0
+    environment:
+      DATASET: ${DATASET}
+    entrypoint: ["bash", "/seed/mongo-seed.sh"]
+    volumes:
+      - ./ops/perf/datasets:/perf-datasets:ro
+      - ./ops/perf/seeders/mongo-seed.sh:/seed/mongo-seed.sh:ro
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  # ─────────────────────────────────────────────────────────────
+  # 마이크로서비스 (리소스 제한 없음)
+  # ─────────────────────────────────────────────────────────────
+
+  user-service:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: user/Dockerfile
+    image: deadlock-user-service:bake
+    env_file:
+      - .env.perf
+    environment:
+      SPRING_PROFILES_ACTIVE: perf
+      SERVER_PORT: 8081
+      MANAGEMENT_PORT: 8091
+      POSTGRES_HOST: postgres-user
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${USER_POSTGRES_DB}
+      USER_SERVICE_URL: http://user-service:8081
+      TOPIC_SERVICE_URL: http://topic-service:8082
+      TEMPO_HOST: tempo
       SPRING_JPA_HIBERNATE_DDL_AUTO: create
       SPRING_MAIN_LAZY_INITIALIZATION: "true"
       JAVA_OPTS: *bake-java-opts
-    deploy: *bake-deploy
-    healthcheck: *fast-health
+    depends_on:
+      postgres-user:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8091/actuator/health/readiness > /dev/null || exit 1"]
+      <<: *app-health
 
   topic-service:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: topic/Dockerfile
+    image: deadlock-topic-service:bake
+    env_file:
+      - .env.perf
     environment:
+      SPRING_PROFILES_ACTIVE: perf
+      SERVER_PORT: 8082
+      MANAGEMENT_PORT: 8092
+      POSTGRES_HOST: postgres-topic
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${TOPIC_POSTGRES_DB}
+      TEMPO_HOST: tempo
       SPRING_JPA_HIBERNATE_DDL_AUTO: create
       SPRING_MAIN_LAZY_INITIALIZATION: "true"
       JAVA_OPTS: *bake-java-opts
-    deploy: *bake-deploy
-    healthcheck: *fast-health
+    depends_on:
+      postgres-topic:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8092/actuator/health/readiness > /dev/null || exit 1"]
+      <<: *app-health
 
   quiz-service:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: quiz/Dockerfile
+    image: deadlock-quiz-service:bake
+    env_file:
+      - .env.perf
     environment:
+      SPRING_PROFILES_ACTIVE: perf
+      SERVER_PORT: 8083
+      MANAGEMENT_PORT: 8093
+      POSTGRES_HOST: postgres-quiz
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${QUIZ_POSTGRES_DB}
+      USER_SERVICE_URL: http://user-service:8081
+      TOPIC_SERVICE_URL: http://topic-service:8082
+      TEMPO_HOST: tempo
       SPRING_JPA_HIBERNATE_DDL_AUTO: create
       SPRING_MAIN_LAZY_INITIALIZATION: "true"
       JAVA_OPTS: *bake-java-opts
-    deploy: *bake-deploy
-    healthcheck: *fast-health
+    depends_on:
+      postgres-quiz:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+      topic-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8093/actuator/health/readiness > /dev/null || exit 1"]
+      <<: *app-health
 
   interview-service:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: interview/Dockerfile
+    image: deadlock-interview-service:bake
+    env_file:
+      - .env.perf
     environment:
+      SPRING_PROFILES_ACTIVE: perf
+      SERVER_PORT: 8084
+      MANAGEMENT_PORT: 8094
+      POSTGRES_HOST: postgres-interview
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${INTERVIEW_POSTGRES_DB}
+      TEMPO_HOST: tempo
       SPRING_JPA_HIBERNATE_DDL_AUTO: create
       SPRING_MAIN_LAZY_INITIALIZATION: "true"
       JAVA_OPTS: *bake-java-opts
-    deploy: *bake-deploy
-    healthcheck: *fast-health
+    depends_on:
+      postgres-interview:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8094/actuator/health/readiness > /dev/null || exit 1"]
+      <<: *app-health
 
-  # ── 이벤트 소비자 3종 ───────────────────────────────────────────
-  # ranking·streak 은 RabbitMQ 리스너로 채점 이벤트를 소비해 데이터를 기록한다.
-  # lazy-init 시 리스너 컨테이너 기동이 지연/누락될 위험이 있어 시딩 데이터가
-  # 불완전해질 수 있으므로 lazy-init 을 적용하지 않는다(CPU 완화만으로 충분히 빨라짐).
-  # grading 도 메시징 경로에 있어 동일하게 보수적으로 둔다.
   ranking-service:
-    deploy: *bake-deploy
-    healthcheck: *fast-health
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: ranking/Dockerfile
+    image: deadlock-ranking-service:bake
+    env_file:
+      - .env.perf
+    environment:
+      SPRING_PROFILES_ACTIVE: perf
+      SERVER_PORT: 8085
+      MANAGEMENT_PORT: 8095
+      USER_SERVICE_URL: http://user-service:8081
+      TEMPO_HOST: tempo
+      JAVA_OPTS: *bake-java-opts
+    depends_on:
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8095/actuator/health/readiness > /dev/null || exit 1"]
+      <<: *app-health
 
   streak-service:
-    deploy: *bake-deploy
-    healthcheck: *fast-health
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: streak/Dockerfile
+    image: deadlock-streak-service:bake
+    env_file:
+      - .env.perf
+    environment:
+      SPRING_PROFILES_ACTIVE: perf
+      SERVER_PORT: 8086
+      MANAGEMENT_PORT: 8096
+      TEMPO_HOST: tempo
+      JAVA_OPTS: *bake-java-opts
+    depends_on:
+      mongo:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8096/actuator/health/readiness > /dev/null || exit 1"]
+      <<: *app-health
 
   grading-service:
-    deploy: *bake-deploy
-    healthcheck: *fast-health
-
-  # ── 나머지: lazy-init + 완화 + 빠른 헬스체크 ────────────────────
-  stt-service:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: grading/Dockerfile
+    image: deadlock-grading-service:bake
+    env_file:
+      - .env.perf
     environment:
+      SPRING_PROFILES_ACTIVE: perf
+      SERVER_PORT: 8087
+      MANAGEMENT_PORT: 8097
+      GRADING_SERVICE_PORT: 8087
+      TOPIC_SERVICE_URL: http://topic-service:8082
+      QUIZ_SERVICE_URL: http://quiz-service:8083
+      TEMPO_HOST: tempo
+      JAVA_OPTS: *bake-java-opts
+    depends_on:
+      redis:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      quiz-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8097/actuator/health/readiness > /dev/null || exit 1"]
+      <<: *app-health
+
+  stt-service:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: stt/Dockerfile
+    image: deadlock-stt-service:bake
+    env_file:
+      - .env.perf
+    environment:
+      SPRING_PROFILES_ACTIVE: perf
+      SERVER_PORT: 8088
+      MANAGEMENT_PORT: 8098
+      STT_SERVICE_PORT: 8088
+      TEMPO_HOST: tempo
       SPRING_MAIN_LAZY_INITIALIZATION: "true"
       JAVA_OPTS: *bake-java-opts
-    deploy: *bake-deploy
-    healthcheck: *fast-health
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8098/actuator/health/readiness > /dev/null || exit 1"]
+      <<: *app-health
 
   gateway:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: gateway/Dockerfile
+    image: deadlock-gateway:bake
+    env_file:
+      - .env.perf
     environment:
+      SPRING_PROFILES_ACTIVE: perf
+      SERVER_PORT: 8080
+      MANAGEMENT_PORT: 8081
+      USER_SERVICE_HOST: user-service
+      USER_SERVICE_PORT: 8081
+      TOPIC_SERVICE_HOST: topic-service
+      TOPIC_SERVICE_PORT: 8082
+      QUIZ_SERVICE_HOST: quiz-service
+      QUIZ_SERVICE_PORT: 8083
+      INTERVIEW_SERVICE_HOST: interview-service
+      INTERVIEW_SERVICE_PORT: 8084
+      RANKING_SERVICE_HOST: ranking-service
+      RANKING_SERVICE_PORT: 8085
+      STREAK_SERVICE_HOST: streak-service
+      STREAK_SERVICE_PORT: 8086
+      GRADING_SERVICE_HOST: grading-service
+      GRADING_SERVICE_PORT: 8087
+      STT_SERVICE_HOST: stt-service
+      STT_SERVICE_PORT: 8088
+      DEV_SERVICE_HOST: dev-service
+      DEV_SERVICE_PORT: 8090
+      TEMPO_HOST: tempo
       SPRING_MAIN_LAZY_INITIALIZATION: "true"
       JAVA_OPTS: *bake-java-opts
-    deploy: *bake-deploy
-    healthcheck: *fast-health
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+    depends_on:
+      user-service:
+        condition: service_healthy
+      topic-service:
+        condition: service_healthy
+      quiz-service:
+        condition: service_healthy
+      ranking-service:
+        condition: service_healthy
+      streak-service:
+        condition: service_healthy
+      grading-service:
+        condition: service_healthy
+      dev-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8081/actuator/health/readiness > /dev/null || exit 1"]
+      <<: *app-health
 
-  # dev-service: 시딩을 오케스트레이션(이벤트 발행자)하므로 lazy-init 안전.
-  # base 에서 0.5cpu/512m 로 가장 조여져 있던 시딩 핵심 경로 → 완화 효과가 크다.
   dev-service:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: dev/Dockerfile
+    image: deadlock-dev-service:bake
+    env_file:
+      - .env.perf
     environment:
+      SPRING_PROFILES_ACTIVE: perf
+      DEV_SERVICE_PORT: 8090
+      MANAGEMENT_PORT: 8099
+      USER_SERVICE_URL: http://user-service:8081
+      TOPIC_SERVICE_URL: http://topic-service:8082
+      QUIZ_SERVICE_URL: http://quiz-service:8083
+      INTERVIEW_SERVICE_URL: http://interview-service:8084
+      GRADING_SERVICE_URL: http://grading-service:8087
+      STREAK_SERVICE_URL: http://streak-service:8086
+      RANKING_SERVICE_URL: http://ranking-service:8085
+      TEMPO_HOST: tempo
       SPRING_MAIN_LAZY_INITIALIZATION: "true"
       JAVA_OPTS: *bake-java-opts
-    deploy: *bake-deploy
-    healthcheck: *fast-health
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+      topic-service:
+        condition: service_healthy
+      quiz-service:
+        condition: service_healthy
+      grading-service:
+        condition: service_healthy
+      streak-service:
+        condition: service_healthy
+      ranking-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8099/actuator/health/readiness > /dev/null || exit 1"]
+      <<: *app-health
+
+  # ── 부하테스트 지원 ────────────────────────────────────────────
+  # grading-service 의 AI 채점이 WireMock 을 통하므로 bake 에도 필요
+  wiremock:
+    profiles: [app]
+    image: wiremock/wiremock:3.9.1
+    restart: always
+    command: ["--global-response-templating", "--verbose"]
+    volumes:
+      - ./ops/wiremock/mappings:/home/wiremock/mappings:ro
+    ports:
+      - "8089:8080"
+
+volumes:
+  redis-bake-data:
+  mongo-bake-data:
+  postgres-user-bake-data:
+  postgres-topic-bake-data:
+  postgres-quiz-bake-data:
+  postgres-interview-bake-data:

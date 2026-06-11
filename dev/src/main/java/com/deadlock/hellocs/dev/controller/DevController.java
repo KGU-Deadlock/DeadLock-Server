@@ -33,12 +33,61 @@ public class DevController {
         return ApiResponse.onSuccess(devSeedService.seedCsQuestions(perCategory));
     }
 
+    /**
+     * 세그먼트 분포 모델 기반 통계 시딩.
+     * 파라미터 기본값은 ops/perf/profiles/dataset.env와 일치한다.
+     * bake-dataset.ps1이 dataset.env를 읽어 이 값들을 전달한다.
+     */
+    @PostMapping("/seed/users")
+    public ApiResponse<DevSeedService.SeedUsersOnlyResult> seedUsers(
+            @RequestParam(name = "users",     defaultValue = "100") int users,
+            @RequestParam(name = "numTopics", defaultValue = "6")   int numTopics) {
+        return ApiResponse.onSuccess(devSeedService.seedUsersOnly(users, numTopics));
+    }
+
+    @PostMapping("/seed/activity")
+    public ApiResponse<DevSeedService.SeedActivityResult> seedActivity(
+            @RequestParam(name = "users",            defaultValue = "100")  int   users,
+            @RequestParam(name = "signupWindowDays", defaultValue = "180")  int   signupWindowDays,
+            @RequestParam(name = "quizPerDay",       defaultValue = "30")   int   quizPerDay,
+            @RequestParam(name = "numTopics",        defaultValue = "6")    int   numTopics,
+            @RequestParam(name = "segPowerShare",    defaultValue = "0.2")  float segPowerShare,
+            @RequestParam(name = "segRegularShare",  defaultValue = "0.5")  float segRegularShare,
+            @RequestParam(name = "segPowerDpw",      defaultValue = "7")    int   segPowerDpw,
+            @RequestParam(name = "segRegularDpw",    defaultValue = "4")    int   segRegularDpw,
+            @RequestParam(name = "segCasualDpw",     defaultValue = "2")    int   segCasualDpw,
+            @RequestParam(name = "tokenPoolSize",    defaultValue = "1000") int   tokenPoolSize,
+            @RequestParam(name = "seed",             defaultValue = "42")   long  seed) {
+        return ApiResponse.onSuccess(devSeedService.seedActivity(
+                users, signupWindowDays, quizPerDay, numTopics,
+                segPowerShare, segRegularShare,
+                segPowerDpw, segRegularDpw, segCasualDpw,
+                tokenPoolSize, seed));
+    }
+
     @PostMapping("/seed/stats")
     public ApiResponse<DevSeedService.SeedStatsResult> seedStats(
-            @RequestParam(name = "userCount", defaultValue = "10") int userCount,
-            @RequestParam(name = "days", defaultValue = "14") int days,
-            @RequestParam(name = "fromIndex", defaultValue = "0") int fromIndex) {
-        return ApiResponse.onSuccess(devSeedService.seedStats(userCount, days, fromIndex));
+            @RequestParam(name = "users",            defaultValue = "100")  int   users,
+            @RequestParam(name = "signupWindowDays", defaultValue = "180")  int   signupWindowDays,
+            @RequestParam(name = "quizPerDay",       defaultValue = "30")   int   quizPerDay,
+            @RequestParam(name = "numTopics",        defaultValue = "6")    int   numTopics,
+            @RequestParam(name = "segPowerShare",    defaultValue = "0.2")  float segPowerShare,
+            @RequestParam(name = "segRegularShare",  defaultValue = "0.5")  float segRegularShare,
+            @RequestParam(name = "segPowerDpw",      defaultValue = "7")    int   segPowerDpw,
+            @RequestParam(name = "segRegularDpw",    defaultValue = "4")    int   segRegularDpw,
+            @RequestParam(name = "segCasualDpw",     defaultValue = "2")    int   segCasualDpw,
+            @RequestParam(name = "tokenPoolSize",    defaultValue = "1000") int   tokenPoolSize,
+            @RequestParam(name = "seed",             defaultValue = "42")   long  seed) {
+        return ApiResponse.onSuccess(devSeedService.seedStats(
+                users, signupWindowDays, quizPerDay, numTopics,
+                segPowerShare, segRegularShare,
+                segPowerDpw, segRegularDpw, segCasualDpw,
+                tokenPoolSize, seed));
+    }
+
+    @GetMapping("/seed/activity/progress")
+    public ApiResponse<DevSeedService.ActivityProgressResult> getActivityProgress() {
+        return ApiResponse.onSuccess(devSeedService.getActivityProgress());
     }
 
     @GetMapping("/admin-token")

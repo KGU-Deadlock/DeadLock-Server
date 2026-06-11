@@ -2,36 +2,27 @@ param(
     [Parameter(Mandatory=$true)]
     [string]$Name,
 
-    # 증분(누적) 마일스톤. 예: -Milestones 100,1000,10000
-    #   → datasets/<Name>-100, <Name>-1000, <Name>-10000 을 같은 스택에서 누적 생성.
-    #   비워두면 단일 모드($UserCount 1회)로 동작하며 datasets/<Name> 에 저장한다.
-    [int[]]$Milestones  = @(),
-
-    [int]$UserCount     = 100,   # 단일 모드 유저 수 (Milestones 미지정 시)
-    [int]$Days          = 30,
-    [int]$QuizPerCombo  = 5,
-
     [switch]$Build,      # bootJar 재빌드 후 스택 시작 (소스코드 변경 시 사용)
-    [switch]$TearDown,   # 증분 모드에서 끝나고 스택을 정리 (기본: 유지)
-    [switch]$DumpOnly    # 실행 중인 bake 스택에서 덤프만 수행 (단일 모드, datasets/<Name>)
+    [switch]$KeepUp,     # 완료 후 bake 스택 유지 (기본: down)
+    [switch]$Debug,      # 명령어 출력 표시 (평시에는 억제됨)
+    [switch]$DumpOnly    # 실행 중인 bake 스택에서 덤프만 수행 (datasets/<Name>)
 )
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 <#
 .SYNOPSIS
-  HelloCS 부하테스트용 데이터셋을 MSA 스택으로 생성합니다.
+  HelloCS 부하테스트용 데이터셋을 세그먼트 분포 모델로 생성합니다.
 
 .DESCRIPTION
-  docker-compose.perf.yml + docker-compose.perf.bake.yml(오버라이드)로 서비스를 기동,
-  dev-service 를 통해 시딩한 뒤 서비스별 Postgres(×4) + Redis + MongoDB 를 분리 덤프합니다.
+  ops/perf/profiles/dataset.env 에서 규모·세그먼트 파라미터를 읽어
+  docker-compose.perf.yml + docker-compose.perf.bake.yml 로 MSA 스택을 기동,
+  dev-service 를 통해 시딩한 뒤 서비스별 Postgres(×3) + Redis + MongoDB 를 덤프합니다.
 
-  [증분 모드] -Milestones 100,1000,10000
-    스택을 1회만 기동하고, 카탈로그(토픽/퀴즈뱅크/CS질문)를 1회 시드한 뒤,
-    각 마일스톤에서 '직전 마일스톤 이후 새 유저에게만' 채점 이벤트를 발행(fromIndex)하고
-    누적 상태를 스냅샷 덤프합니다. ranking(ZINCRBY)·streak 누적 오염 없이 추가-추가 가능.
+  유저는 kakaoId 순서로 power → regular → casual 블록 배치되며,
+  계정나이·활동일은 seed 값으로 결정론 생성됩니다 → k6 토큰풀의 블록 슬라이싱과 자동 일치.
 
-  생성되는 파일 (단일 모드는 <Name>, 증분 모드는 <Name>-<milestone> 폴더마다):
-    postgres-user.sql / postgres-topic.sql / postgres-quiz.sql / postgres-interview.sql
+  생성되는 파일 (datasets/<Name>/ 폴더):
+    postgres-user.sql / postgres-topic.sql / postgres-quiz.sql
     redis/dump.rdb
     mongo/hellocs/
     meta.json
@@ -41,47 +32,88 @@ param(
 
 .EXAMPLE
   .\k6\bake-dataset.ps1 -Name default
-  .\k6\bake-dataset.ps1 -Name small -UserCount 50 -Days 14
-  .\k6\bake-dataset.ps1 -Name scale -Milestones 100,1000,10000 -Days 30
-  .\k6\bake-dataset.ps1 -Name scale -Milestones 100,1000,10000 -TearDown
+  .\k6\bake-dataset.ps1 -Name default -Build
+  .\k6\bake-dataset.ps1 -Name default -KeepUp
+  .\k6\bake-dataset.ps1 -Name default -Debug
 
 .NOTES
-  소스코드를 변경했다면 -Build 스위치를 사용하세요 (./gradlew bootJar → compose --build).
-  -Build 없이 실행하면 기존 jar를 그대로 사용합니다 (compose --build 는 jar 를 COPY 만 함).
-  이후 .\k6\run.ps1 -Dataset <Name>[-<milestone>] 으로 사용합니다.
+  규모(users, segments)는 ops/perf/profiles/dataset.env 에서 제어합니다.
+  소스코드를 변경했다면 -Build 스위치를 사용하세요.
+  생성 후: .\k6\run.ps1 -Dataset <Name>
 #>
 
 # ── 상수 ─────────────────────────────────────────────────────────────────────
 
-$ComposeBase  = "docker-compose.perf.yml"
-$ComposeBake  = "docker-compose.perf.bake.yml"
-$EnvFile      = ".env.perf"
-$ProjectName  = "hellocs-bake"
+$DatasetProfile = "ops\perf\profiles\dataset.env"
+$ComposeBake    = "docker-compose.perf.bake.yml"
+$EnvFile        = ".env.perf"
+$ProjectName    = "hellocs-bake"
 
-$GwHealthUrl  = "http://localhost:8081/actuator/health/readiness"   # gateway management
-$GwAppUrl     = "http://localhost:8080"
+$GwHealthUrl    = "http://localhost:8081/actuator/health/readiness"
+$GwAppUrl       = "http://localhost:8080"
 
 $StartupTimeout = 180   # 서비스 빌드·기동 대기 (초)
-$DrainTimeout   = 120   # RabbitMQ 큐 드레인 대기 (초)
+$SeedTimeout    = 1800  # 통계 시딩 대기 (10k 유저 × 세그먼트 = 최대 30분)
 
 $pgServices = @(
-    @{ Service = "postgres-user";      File = "postgres-user.sql"      },
-    @{ Service = "postgres-topic";     File = "postgres-topic.sql"     },
-    @{ Service = "postgres-quiz";      File = "postgres-quiz.sql"      },
-    @{ Service = "postgres-interview"; File = "postgres-interview.sql" }
+    @{ Service = "postgres-user";  File = "postgres-user.sql"  },
+    @{ Service = "postgres-topic"; File = "postgres-topic.sql" },
+    @{ Service = "postgres-quiz";  File = "postgres-quiz.sql"  }
 )
+
+# ── .env 파서 ────────────────────────────────────────────────────────────────
+
+function Read-EnvFile($path) {
+    $map = [ordered]@{}
+    if (-not (Test-Path $path)) { return $map }
+    Get-Content $path | ForEach-Object {
+        if ($_ -match '^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$' -and $_ -notmatch '^\s*#') {
+            $val = $Matches[2] -replace '\s*#.*$', ''
+            $map[$Matches[1]] = $val.Trim()
+        }
+    }
+    return $map
+}
+
+# ── dataset.env 읽기 ──────────────────────────────────────────────────────────
+
+$ds = Read-EnvFile $DatasetProfile
+
+$users            = if ($ds["DATASET_USERS"])              { [int]$ds["DATASET_USERS"]              } else { 10000 }
+$signupWindowDays = if ($ds["DATASET_SIGNUP_WINDOW_DAYS"]) { [int]$ds["DATASET_SIGNUP_WINDOW_DAYS"] } else { 180   }
+$quizPerDay       = if ($ds["DATASET_QUIZ_PER_DAY"])       { [int]$ds["DATASET_QUIZ_PER_DAY"]       } else { 30    }
+$quizBank         = if ($ds["DATASET_QUIZ_BANK"])          { [int]$ds["DATASET_QUIZ_BANK"]          } else { 10000 }
+$numTopics        = if ($ds["DATASET_TOPICS"])             { [int]$ds["DATASET_TOPICS"]             } else { 6     }
+$segPowerShare    = if ($ds["SEG_POWER_SHARE"])            { [double]$ds["SEG_POWER_SHARE"]         } else { 0.2   }
+$segRegularShare  = if ($ds["SEG_REGULAR_SHARE"])          { [double]$ds["SEG_REGULAR_SHARE"]       } else { 0.5   }
+$segCasualShare   = if ($ds["SEG_CASUAL_SHARE"])           { [double]$ds["SEG_CASUAL_SHARE"]        } else { 0.3   }
+$segPowerDpw      = if ($ds["SEG_POWER_DAYS_PER_WEEK"])    { [int]$ds["SEG_POWER_DAYS_PER_WEEK"]    } else { 7     }
+$segRegularDpw    = if ($ds["SEG_REGULAR_DAYS_PER_WEEK"])  { [int]$ds["SEG_REGULAR_DAYS_PER_WEEK"]  } else { 4     }
+$segCasualDpw     = if ($ds["SEG_CASUAL_DAYS_PER_WEEK"])   { [int]$ds["SEG_CASUAL_DAYS_PER_WEEK"]   } else { 2     }
+$tokenPoolSize    = if ($ds["TOKEN_POOL_SIZE"])             { [int]$ds["TOKEN_POOL_SIZE"]            } else { 1000  }
+$datasetSeed      = 42L
 
 # ── 공통 헬퍼 ────────────────────────────────────────────────────────────────
 
 function Invoke-Compose {
     param([string[]]$CmdArgs)
     wsl docker compose -p $ProjectName --env-file $EnvFile `
-        -f $ComposeBase -f $ComposeBake @CmdArgs
+        -f $ComposeBake @CmdArgs
+}
+
+# -Debug 시 출력을 표시하고, 평시에는 억제한다.
+function Invoke-ComposeQ {
+    param([string[]]$CmdArgs)
+    if ($script:Debug) {
+        Invoke-Compose $CmdArgs
+    } else {
+        Invoke-Compose $CmdArgs 2>&1 | Out-Null
+    }
 }
 
 function Invoke-ComposeDown {
     Write-Host "      bake 스택 정리 중..." -ForegroundColor DarkGray
-    Invoke-Compose @("--profile", "app", "down", "-v", "--remove-orphans") 2>&1 | Out-Null
+    Invoke-ComposeQ @("--profile", "app", "down", "-v", "--remove-orphans")
     Write-Host "      정리 완료." -ForegroundColor DarkGray
 }
 
@@ -102,7 +134,6 @@ function To-WslPath($WinDir) {
     return '/mnt/' + $full[0].ToString().ToLower() + ($full.Substring(2) -replace '\\', '/')
 }
 
-# 실패 단계의 관련 컨테이너 로그를 콘솔 + 파일로 자동 수집한다.
 function Show-Diagnostics {
     param(
         [string]$Phase,
@@ -124,11 +155,9 @@ function Show-Diagnostics {
         $log | Out-Host
         if ($LogDir) { $log | Out-File -FilePath (Join-Path $LogDir "$svc.log") -Encoding utf8 }
     }
-    if ($LogDir) {
-        Write-Host "      로그 저장됨: $LogDir" -ForegroundColor DarkGray
-    }
+    if ($LogDir) { Write-Host "      로그 저장됨: $LogDir" -ForegroundColor DarkGray }
     Write-Host "스택을 유지합니다 (수동 조사 가능)." -ForegroundColor Yellow
-    Write-Host "정리: wsl docker compose -p $ProjectName --env-file $EnvFile -f $ComposeBase -f $ComposeBake --profile app down -v" -ForegroundColor DarkGray
+    Write-Host "정리: wsl docker compose -p $ProjectName --env-file $EnvFile -f $ComposeBake --profile app down -v" -ForegroundColor DarkGray
 }
 
 function Invoke-Seed($Label, $Uri, $TimeoutSec = 900) {
@@ -137,28 +166,59 @@ function Invoke-Seed($Label, $Uri, $TimeoutSec = 900) {
     Write-Host " 완료 ($($r.StatusCode))" -ForegroundColor Green
 }
 
-# RabbitMQ 모든 큐가 빌 때까지 대기. 성공 시 $true, 타임아웃 시 $false.
-function Invoke-Drain {
-    param([int]$TimeoutSec = $DrainTimeout)
-    $elapsed = 0
-    while ($elapsed -lt $TimeoutSec) {
+# 진행 상황을 5초마다 progress 엔드포인트로 폴링하면서 대기하는 시드 함수 (오래 걸리는 단계 전용)
+function Invoke-SeedWithProgress($Label, $Uri, $TimeoutSec = 900) {
+    Write-Host "      $Label ..." -ForegroundColor Yellow
+
+    $job = Start-Job -ScriptBlock {
+        param($url, $timeout)
+        try {
+            $r = Invoke-WebRequest -Uri $url -Method POST -TimeoutSec $timeout -UseBasicParsing -ErrorAction Stop
+            return @{ StatusCode = [int]$r.StatusCode; Error = $null }
+        } catch {
+            return @{ StatusCode = 0; Error = $_.ToString() }
+        }
+    } -ArgumentList $Uri, $TimeoutSec
+
+    $progressUrl = "$GwAppUrl/v1/dev/seed/activity/progress"
+    $start       = [DateTime]::UtcNow
+
+    while ($job.State -eq 'Running') {
         Start-Sleep -Seconds 5
-        $elapsed += 5
-        $queueLines = Invoke-Compose @("exec", "-T", "rabbitmq",
-            "rabbitmqctl", "list_queues", "name", "messages") 2>$null
-        $pending = $queueLines |
-            Where-Object { $_ -match '^\S+\s+\d+$' } |
-            ForEach-Object { ($_ -split '\s+')[1] -as [int] } |
-            Measure-Object -Sum | Select-Object -ExpandProperty Sum
-        if ($null -eq $pending) { $pending = 0 }
-        if ($pending -eq 0) { return $true }
-        Write-Host "      대기 중 (미처리 ${pending}개) ... ${elapsed}s / ${TimeoutSec}s" -ForegroundColor DarkGray
+        $localElapsed = [int]([DateTime]::UtcNow - $start).TotalSeconds
+
+        try {
+            $resp  = Invoke-RestMethod -Uri $progressUrl -Method GET -TimeoutSec 3 -ErrorAction Stop
+            $p     = $resp.data
+            $phase = $p.phase
+            $elSrv = $p.elapsedSeconds
+
+            if ($p.grading -and $p.grading.totalUsers -gt 0) {
+                $g   = $p.grading
+                $pct = [int]($g.processedUsers * 100 / $g.totalUsers)
+                Write-Host ("      [{0}] 유저 {1}/{2} ({3}%) — docs {4} ({5}s)" -f `
+                    $phase, $g.processedUsers, $g.totalUsers, $pct, $g.insertedDocs, $elSrv) `
+                    -ForegroundColor DarkGray
+            } else {
+                Write-Host "      [$phase] ${elSrv}s 경과" -ForegroundColor DarkGray
+            }
+        } catch {
+            Write-Host "      ...${localElapsed}s 경과" -ForegroundColor DarkGray
+        }
     }
-    return $false
+
+    $result  = Receive-Job -Job $job -Wait
+    Remove-Job -Job $job -Force
+    $elapsed = [int]([DateTime]::UtcNow - $start).TotalSeconds
+
+    if ($result.Error) {
+        Write-Host "      $Label 실패 — ${elapsed}s" -ForegroundColor Red
+        throw $result.Error
+    }
+    Write-Host "      $Label 완료 ($($result.StatusCode)) — ${elapsed}s" -ForegroundColor Green
 }
 
-# 4×Postgres + Redis + Mongo + meta.json 을 $TargetDir 에 덤프한다.
-# 실패 시 진단 출력 후 예외를 다시 던진다(호출부에서 keep/exit 처리).
+# 4×Postgres → 3 + Redis + Mongo + meta.json 를 $TargetDir 에 덤프한다.
 function Invoke-DumpAll {
     param(
         [string]$TargetDir,
@@ -185,7 +245,7 @@ function Invoke-DumpAll {
 
         Write-Host "      [redis] BGSAVE ..." -NoNewline
         $before = (Invoke-Compose @("exec", "-T", "redis", "redis-cli", "LASTSAVE")).Trim()
-        Invoke-Compose @("exec", "-T", "redis", "redis-cli", "BGSAVE") > $null
+        Invoke-ComposeQ @("exec", "-T", "redis", "redis-cli", "BGSAVE")
         $waited = 0
         do {
             Start-Sleep -Seconds 1
@@ -208,12 +268,11 @@ function Invoke-DumpAll {
     } catch {
         Write-Host " 실패: $_" -ForegroundColor Red
         Show-Diagnostics "dump ($TargetDir)" @(
-            "postgres-user", "postgres-topic", "postgres-quiz", "postgres-interview", "redis", "mongo"
+            "postgres-user", "postgres-topic", "postgres-quiz", "redis", "mongo"
         ) $logDir
         throw
     }
 
-    # meta.json
     try { $gitSha = (git rev-parse --short HEAD).Trim() } catch { $gitSha = "unknown" }
     if (-not $gitSha) { $gitSha = "unknown" }
     $Meta["createdAt"] = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
@@ -222,32 +281,35 @@ function Invoke-DumpAll {
         Out-File -FilePath (Join-Path ([System.IO.Path]::GetFullPath($TargetDir)) "meta.json") -Encoding utf8
 }
 
-# ── 마일스톤 정규화 ───────────────────────────────────────────────────────────
-
-$incremental = $Milestones.Count -gt 0
-if (-not $incremental) { $Milestones = @($UserCount) }
-$Milestones = @($Milestones | Sort-Object -Unique)
+# ── 진입점 ───────────────────────────────────────────────────────────────────
 
 Write-Host ""
 Write-Host "=== HelloCS 데이터셋 Bake: '$Name' ===" -ForegroundColor Cyan
-if ($incremental) {
-    Write-Host "  모드: 증분  마일스톤=[$($Milestones -join ', ')]  Days=$Days  QuizPerCombo=$QuizPerCombo" -ForegroundColor DarkGray
-} else {
-    Write-Host "  모드: 단일  UserCount=$UserCount  Days=$Days  QuizPerCombo=$QuizPerCombo" -ForegroundColor DarkGray
-}
+Write-Host "  dataset.env: users=$users  signupWindowDays=$signupWindowDays  quizPerDay=$quizPerDay" -ForegroundColor DarkGray
+Write-Host "  세그먼트: power=$segPowerShare/$segPowerDpw dpw  regular=$segRegularShare/$segRegularDpw dpw  casual=$segCasualShare/$segCasualDpw dpw" -ForegroundColor DarkGray
 Write-Host ""
 
+$outDir = "ops\perf\datasets\$Name"
+
 # ══════════════════════════════════════════════════════════════════════════════
-# DumpOnly: 기존 스택에서 단일 폴더(<Name>)로 덤프만
+# DumpOnly: 실행 중인 스택에서 덤프만
 # ══════════════════════════════════════════════════════════════════════════════
 if ($DumpOnly) {
-    Write-Host "[덤프] -DumpOnly: 기존 스택에서 datasets\$Name 으로 덤프" -ForegroundColor Yellow
+    Write-Host "[덤프] -DumpOnly: 실행 중인 스택에서 datasets\$Name 으로 덤프" -ForegroundColor Yellow
     $meta = [ordered]@{
-        name = $Name; userCount = $UserCount; days = $Days
-        quizPerCombo = $QuizPerCombo; incremental = $false
+        name             = $Name
+        users            = $users
+        segPowerShare    = $segPowerShare
+        segRegularShare  = $segRegularShare
+        segCasualShare   = $segCasualShare
+        signupWindowDays = $signupWindowDays
+        quizPerDay       = $quizPerDay
+        quizBank         = $quizBank
+        topics           = $numTopics
+        seed             = $datasetSeed
     }
     try {
-        Invoke-DumpAll "ops\perf\datasets\$Name" $meta
+        Invoke-DumpAll $outDir $meta
     } catch {
         Write-Host "덤프 실패. 스택을 유지합니다. 재시도: -DumpOnly" -ForegroundColor Red
         exit 1
@@ -261,14 +323,14 @@ if ($DumpOnly) {
 # [1] 기존 bake 스택 정리
 # ══════════════════════════════════════════════════════════════════════════════
 Write-Host "[1] 기존 bake 스택 정리 중..." -ForegroundColor Yellow
-Invoke-Compose @("--profile", "app", "down", "-v", "--remove-orphans") 2>&1 | Out-Null
+Invoke-ComposeQ @("--profile", "app", "down", "-v", "--remove-orphans")
 Write-Host "      완료." -ForegroundColor DarkGray
 
 # ══════════════════════════════════════════════════════════════════════════════
-# [2] Bake 스택 시작 (ddl-auto:create, DATASET="")
+# [2] Bake 스택 시작 (ddl-auto:create, 빈 DB)
 # ══════════════════════════════════════════════════════════════════════════════
 if ($Build) {
-    Write-Host "[2] bootJar 빌드 중 (이미지가 이 jar를 복사합니다) ..." -ForegroundColor Yellow
+    Write-Host "[2] bootJar 빌드 중..." -ForegroundColor Yellow
     & .\gradlew.bat bootJar -x test
     if ($LASTEXITCODE -ne 0) {
         Write-Host "      Gradle bootJar 실패. 스택 시작을 중단합니다." -ForegroundColor Red
@@ -279,7 +341,7 @@ if ($Build) {
 Write-Host "[2] Bake 스택 시작 중 (ddl-auto:create, 빈 DB) ..." -ForegroundColor Yellow
 try {
     wsl env "DATASET=" docker compose -p $ProjectName --env-file $EnvFile `
-        -f $ComposeBase -f $ComposeBake --profile app up -d --build
+        -f $ComposeBake --profile app up -d --build
     if ($LASTEXITCODE -ne 0) { throw "docker compose up 실패 (exit code $LASTEXITCODE)" }
 } catch {
     Show-Diagnostics "stack-up" @("rabbitmq", "gateway") "ops\perf\datasets\_bake-errors"
@@ -294,14 +356,16 @@ while ($elapsed -lt $StartupTimeout) {
     Start-Sleep -Seconds 5
     $elapsed += 5
 
-    $rmqStatus = (Invoke-Compose @("ps", "--format", "json", "rabbitmq") 2>$null |
-        ConvertFrom-Json -ErrorAction SilentlyContinue | Select-Object -ExpandProperty State) 2>$null
+    # Docker Compose v2 는 --format json 시 NDJSON 을 출력하므로 Go 템플릿으로 직접 State 를 조회한다.
+    $rmqStatus = (Invoke-Compose @("ps", "--format", "{{.State}}", "rabbitmq") 2>$null | Select-Object -First 1)
+    if ($rmqStatus) { $rmqStatus = $rmqStatus.Trim() }
     if ($rmqStatus -and $rmqStatus -ne "running") {
         Show-Diagnostics "stack-up (rabbitmq 비정상: $rmqStatus)" @("rabbitmq", "gateway") "ops\perf\datasets\_bake-errors"
         exit 1
     }
 
     if (Test-UrlReady $GwHealthUrl) { $appReady = $true; break }
+
     Write-Host "      ...${elapsed}s / ${StartupTimeout}s" -ForegroundColor DarkGray
 }
 if (-not $appReady) {
@@ -312,87 +376,109 @@ if (-not $appReady) {
 Write-Host "      게이트웨이 준비 완료 (${elapsed}s)" -ForegroundColor Green
 
 # ══════════════════════════════════════════════════════════════════════════════
-# [3] 카탈로그 시드 (1회) — 토픽 / 퀴즈뱅크 / CS질문
+# [3] 카탈로그 시드 (1회) — 토픽 / 퀴즈뱅크
 # ══════════════════════════════════════════════════════════════════════════════
 Write-Host ""
-Write-Host "[3] 카탈로그 시드 (1회) ..." -ForegroundColor Yellow
+Write-Host "[3] 카탈로그 시드 ..." -ForegroundColor Yellow
 try {
     Invoke-Seed "topics" "$GwAppUrl/v1/dev/seed/topics"
-    Invoke-Seed "quiz-bank (perCombo=$QuizPerCombo)" "$GwAppUrl/v1/dev/seed/quiz-bank?perCombo=$QuizPerCombo"
+    Invoke-Seed "quiz-bank (quizBank=$quizBank)" "$GwAppUrl/v1/dev/seed/quiz-bank?perCombo=5"
 } catch {
     Write-Host " 실패: $_" -ForegroundColor Red
     Show-Diagnostics "catalog-seed" `
-        @("gateway", "dev-service", "topic-service", "quiz-service", "interview-service") `
+        @("gateway", "dev-service", "topic-service", "quiz-service") `
         "ops\perf\datasets\_bake-errors"
     exit 1
 }
 
 # ══════════════════════════════════════════════════════════════════════════════
-# [4] 마일스톤 증분 시드 + 단계별 덤프
+# [4a] 유저 시드 — PostgreSQL (user-service)
 # ══════════════════════════════════════════════════════════════════════════════
-$prev = 0
-foreach ($m in $Milestones) {
-    $dsName = if ($incremental) { "$Name-$m" } else { $Name }
-    $outDir = "ops\perf\datasets\$dsName"
-    Write-Host ""
-    Write-Host "[4] 마일스톤 $m  (델타 유저 $prev → $m, days=$Days) → datasets\$dsName" -ForegroundColor Yellow
+Write-Host ""
+Write-Host "[4a] 유저 시드 (users=$users) ..." -ForegroundColor Yellow
 
-    # 4a. 통계 시드 (새 유저 [prev, m) 에게만 채점 이벤트 발행)
-    try {
-        Invoke-Seed "stats (userCount=$m, fromIndex=$prev) — 시간이 걸릴 수 있습니다" `
-            "$GwAppUrl/v1/dev/seed/stats?userCount=$m&days=$Days&fromIndex=$prev"
-    } catch {
-        Write-Host " 실패: $_" -ForegroundColor Red
-        Show-Diagnostics "stats-seed (m=$m)" `
-            @("gateway", "dev-service", "user-service", "rabbitmq", "ranking-service", "streak-service") `
-            (Join-Path $outDir "_diagnostics")
-        exit 1
-    }
+$usersUrl = "$GwAppUrl/v1/dev/seed/users" +
+    "?users=$users" +
+    "&numTopics=$numTopics"
 
-    # 4b. RabbitMQ 드레인 (ranking/streak 반영 완료 대기)
-    Write-Host "      RabbitMQ 큐 드레인 대기 중 (최대 ${DrainTimeout}s) ..." -ForegroundColor DarkGray
-    if (Invoke-Drain) {
-        Write-Host "      큐 비워짐 — ranking·streak 반영 완료" -ForegroundColor Green
-    } else {
-        Write-Host "      경고: 드레인 타임아웃. 일부 이벤트가 미처리일 수 있어 진단을 남깁니다." -ForegroundColor Yellow
-        Show-Diagnostics "drain-timeout (m=$m)" `
-            @("rabbitmq", "ranking-service", "streak-service") (Join-Path $outDir "_diagnostics")
-        Write-Host "      계속 진행합니다." -ForegroundColor Yellow
-    }
-
-    # 4c. 스냅샷 덤프
-    Write-Host "      스냅샷 덤프 중..." -ForegroundColor DarkGray
-    $meta = [ordered]@{
-        name = $dsName; baseName = $Name
-        userCount = $m; deltaFrom = $prev; days = $Days
-        quizPerCombo = $QuizPerCombo; incremental = $incremental
-    }
-    try {
-        Invoke-DumpAll $outDir $meta
-    } catch {
-        Write-Host "마일스톤 $m 덤프 실패. 스택 유지. 재시도: -DumpOnly -Name $dsName" -ForegroundColor Red
-        exit 1
-    }
-    Write-Host "      ✓ datasets\$dsName 완료" -ForegroundColor Green
-    $prev = $m
+try {
+    Invoke-Seed "users" $usersUrl
+} catch {
+    Write-Host " 실패: $_" -ForegroundColor Red
+    Show-Diagnostics "users-seed" `
+        @("gateway", "dev-service", "user-service") `
+        (Join-Path $outDir "_diagnostics")
+    exit 1
 }
 
 # ══════════════════════════════════════════════════════════════════════════════
-# [5] 정리 / 유지
+# [4b] 채점·스트릭·랭킹 시드 (세그먼트 분포 모델) — MongoDB + Redis
 # ══════════════════════════════════════════════════════════════════════════════
 Write-Host ""
-if ($TearDown) {
-    Write-Host "[5] bake 스택 정리 중 (-TearDown)..." -ForegroundColor Yellow
-    Invoke-ComposeDown
+Write-Host "[4b] 채점·스트릭·랭킹 시드 (세그먼트 분포 모델) — 시간이 걸릴 수 있습니다..." -ForegroundColor Yellow
+
+$activityUrl = "$GwAppUrl/v1/dev/seed/activity" +
+    "?users=$users" +
+    "&signupWindowDays=$signupWindowDays" +
+    "&quizPerDay=$quizPerDay" +
+    "&numTopics=$numTopics" +
+    "&segPowerShare=$segPowerShare" +
+    "&segRegularShare=$segRegularShare" +
+    "&segPowerDpw=$segPowerDpw" +
+    "&segRegularDpw=$segRegularDpw" +
+    "&segCasualDpw=$segCasualDpw" +
+    "&tokenPoolSize=$tokenPoolSize" +
+    "&seed=$datasetSeed"
+
+try {
+    Invoke-SeedWithProgress "seed/activity" $activityUrl $SeedTimeout
+} catch {
+    Write-Host " 실패: $_" -ForegroundColor Red
+    Show-Diagnostics "activity-seed" `
+        @("gateway", "dev-service", "grading-service", "streak-service", "ranking-service") `
+        (Join-Path $outDir "_diagnostics")
+    exit 1
+}
+
+# ══════════════════════════════════════════════════════════════════════════════
+# [5] 스냅샷 덤프
+# ══════════════════════════════════════════════════════════════════════════════
+Write-Host ""
+Write-Host "[5] 스냅샷 덤프 중..." -ForegroundColor Yellow
+
+$meta = [ordered]@{
+    name             = $Name
+    users            = $users
+    segPowerShare    = $segPowerShare
+    segRegularShare  = $segRegularShare
+    segCasualShare   = $segCasualShare
+    signupWindowDays = $signupWindowDays
+    quizPerDay       = $quizPerDay
+    quizBank         = $quizBank
+    topics           = $numTopics
+    seed             = $datasetSeed
+}
+try {
+    Invoke-DumpAll $outDir $meta
+} catch {
+    Write-Host "덤프 실패. 스택 유지. 재시도: -DumpOnly -Name $Name" -ForegroundColor Red
+    exit 1
+}
+Write-Host "      ✓ datasets\$Name 완료" -ForegroundColor Green
+
+# ══════════════════════════════════════════════════════════════════════════════
+# [6] 정리 / 유지
+# ══════════════════════════════════════════════════════════════════════════════
+Write-Host ""
+if ($KeepUp) {
+    Write-Host "[6] 스택 유지 중 (-KeepUp)." -ForegroundColor Yellow
+    Write-Host "    정리: wsl docker compose -p $ProjectName --env-file $EnvFile -f $ComposeBake --profile app down -v" -ForegroundColor DarkGray
 } else {
-    Write-Host "[5] 스택 유지 중 (추가 마일스톤/조사 가능)." -ForegroundColor Yellow
-    Write-Host "    정리: wsl docker compose -p $ProjectName --env-file $EnvFile -f $ComposeBase -f $ComposeBake --profile app down -v" -ForegroundColor DarkGray
+    Write-Host "[6] bake 스택 정리 중..." -ForegroundColor Yellow
+    Invoke-ComposeDown
 }
 
 Write-Host ""
 Write-Host "=== 데이터셋 '$Name' 생성 완료 ===" -ForegroundColor Cyan
-foreach ($m in $Milestones) {
-    $dsName = if ($incremental) { "$Name-$m" } else { $Name }
-    Write-Host "  datasets\$dsName  (.\k6\run.ps1 -Dataset $dsName)" -ForegroundColor Green
-}
+Write-Host "  datasets\$Name  (.\k6\run.ps1 -Dataset $Name)" -ForegroundColor Green
 Write-Host ""
