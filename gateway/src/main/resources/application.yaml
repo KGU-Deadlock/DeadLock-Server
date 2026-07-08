@@ -117,6 +117,12 @@ spring:
                 - Path=/v3/api-docs/streak
               filters:
                 - RewritePath=/v3/api-docs/streak, /v3/api-docs
+            - id: swagger-dev-api-docs
+              uri: http://${DEV_SERVICE_HOST}:${DEV_SERVICE_PORT}
+              predicates:
+                - Path=/v3/api-docs/dev
+              filters:
+                - RewritePath=/v3/api-docs/dev, /v3/api-docs
 
           default-filters:
             - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_UNIQUE
@@ -161,6 +167,8 @@ springdoc:
         url: /v3/api-docs/ranking
       - name: streak-service
         url: /v3/api-docs/streak
+      - name: dev-service
+        url: /v3/api-docs/dev
 
 logging:
   level:

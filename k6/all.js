@@ -10,7 +10,7 @@
 import http from 'k6/http';
 import {
   BASE_URL, DEFAULT_HEADERS,
-  TARGET_RPS, MODULE, MAX_VUS, SETUP_TIMEOUT,
+  START_RPS, END_RPS, STEP_RPS, STEP_DURATION, MODULE, MAX_VUS, SETUP_TIMEOUT,
   TOKEN_POOL_SIZE, DEBUG,
 } from './lib/config.js';
 import { buildTokenPool, pickToken } from './lib/auth.js';
@@ -34,22 +34,29 @@ const activeEndpoints = REGISTRY.filter((ep) => {
 
 // ── options: 시나리오·임계값 동적 생성 ─────────────────────────────
 
+function buildStepStages(endpointTarget) {
+  const stages = [];
+  for (let rps = START_RPS; rps <= END_RPS; rps += STEP_RPS) {
+    const levelTarget = Math.max(1, Math.round(endpointTarget * rps / END_RPS));
+    stages.push({ duration: '1s',          target: levelTarget }); // 즉시 점프
+    stages.push({ duration: STEP_DURATION, target: levelTarget }); // 유지
+  }
+  stages.push({ duration: '30s', target: 0 }); // 종료
+  return stages;
+}
+
 function buildScenarios() {
   const scenarios = {};
   for (const ep of activeEndpoints) {
-    const ratio  = PROFILE.endpoints[ep.name].ratio;
-    const target = Math.max(1, Math.round(TARGET_RPS * ratio / 100));
+    const ratio       = PROFILE.endpoints[ep.name].ratio;
+    const maxTarget   = Math.max(1, Math.round(END_RPS * ratio / 100));
     scenarios[ep.name.toLowerCase()] = {
       executor: 'ramping-arrival-rate',
-      startRate: 1,
+      startRate: Math.max(1, Math.round(START_RPS * ratio / 100)),
       timeUnit: '1s',
-      preAllocatedVUs: Math.ceil(target / 2),
+      preAllocatedVUs: Math.ceil(maxTarget / 2),
       maxVUs: MAX_VUS,
-      stages: [
-        { duration: '30s', target: Math.min(5, target) }, // JIT 워밍업
-        { duration: '3m',  target },                      // 목표 RPS 점진 증가
-        { duration: '30s', target: 0 },
-      ],
+      stages: buildStepStages(maxTarget),
       exec: ep.exec,
     };
   }
@@ -57,16 +64,27 @@ function buildScenarios() {
 }
 
 function buildThresholds() {
+  // VERIFY_ONLY: 환경 검증 모드. SLO 는 기록하되 abortOnFail 을 끈다.
+  // (로컬 k6 → 원격 SUT WAN 지연 바닥 때문에 p95 SLO 가 항상 초과되므로,
+  //  트래픽·플러밍 검증 목적일 때 중단 없이 전체 런을 완주시킨다.)
+  const verifyOnly = String(__ENV.VERIFY_ONLY).toLowerCase() === 'true';
   const thresholds = {
-    // 전역 에러율 < 1% (plan SLO)
-    http_req_failed: [{ threshold: 'rate<0.01', abortOnFail: true, delayAbortEval: '30s' }],
+    // 전역 에러율. 정상 모드는 plan SLO 1%(중단). 검증 모드는 원격 k6→SUT WAN 의
+    // 일시적 연결 리셋 노이즈를 허용해 10%(비중단) — 플러밍 정상 여부만 판정.
+    http_req_failed: verifyOnly
+      ? [{ threshold: 'rate<0.10' }]
+      : [{ threshold: 'rate<0.01', abortOnFail: true, delayAbortEval: '30s' }],
   };
-  for (const ep of activeEndpoints) {
-    const p95 = PROFILE.endpoints[ep.name]?.p95;
-    if (!p95) continue; // P95_* 빈 값(예: GRADING_LIST) → 임계값 미적용
-    thresholds[`http_req_duration{name:${ep.tag}}`] = [
-      { threshold: `p(95)<${p95}`, abortOnFail: true, delayAbortEval: '30s' },
-    ];
+  // p95 SLO 는 정상 모드에서만 적용. 검증 모드에서는 WAN 지연 바닥(~730ms+)이
+  // 모든 SLO 를 지배하므로 무의미 → 생략(오탐 방지).
+  if (!verifyOnly) {
+    for (const ep of activeEndpoints) {
+      const p95 = PROFILE.endpoints[ep.name]?.p95;
+      if (!p95) continue; // P95_* 빈 값(예: GRADING_LIST) → 임계값 미적용
+      thresholds[`http_req_duration{name:${ep.tag}}`] = [
+        { threshold: `p(95)<${p95}`, abortOnFail: true, delayAbortEval: '30s' },
+      ];
+    }
   }
   return thresholds;
 }

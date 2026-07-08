@@ -58,10 +58,10 @@ public class DevSeedService {
 
     // ─── 퀴즈 뱅크 시딩 ────────────────────────────────────────────────────────
 
-    public SeedQuizBankResult seedQuizBank(int perCombo) {
+    public SeedQuizBankResult seedQuizBank(int unitCount) {
         SeedQuizBankResponse resp = quizClient.post()
                 .uri(uri -> uri.path("/v1/internal/dev/quiz-bank")
-                        .queryParam("perCombo", perCombo)
+                        .queryParam("unitCount", unitCount)
                         .build())
                 .retrieve()
                 .body(SeedQuizBankApiResponse.class)

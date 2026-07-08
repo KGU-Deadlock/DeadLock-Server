@@ -22,6 +22,7 @@ import org.springframework.web.client.RestClient;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 /**
  * dev 서비스가 호출하는 퀴즈 뱅크 시딩 엔드포인트. dev 프로파일에서만 활성화된다.
@@ -35,6 +36,12 @@ public class DevQuizSeedController {
     private static final String DEV_SEED_PREFIX = "[DEV-SEED]";
     private static final List<String> SEED_TOPIC_NAMES = List.of(
             "Network", "OS", "Database", "Java", "Spring", "Algorithm"
+    );
+    // OX×2, MULTIPLE_CHOICE×2, SHORT_ANSWER×1 (VOICE 제외)
+    private static final Map<QuizType, Integer> TYPE_WEIGHTS = Map.of(
+            QuizType.OX, 2,
+            QuizType.MULTIPLE_CHOICE, 2,
+            QuizType.SHORT_ANSWER, 1
     );
 
     private final QuizRepository quizRepository;
@@ -50,7 +57,7 @@ public class DevQuizSeedController {
     @PostMapping("/quiz-bank")
     @Transactional
     public ApiResponse<SeedQuizBankResult> seedQuizBank(
-            @RequestParam(name = "perCombo", defaultValue = "5") int perCombo) {
+            @RequestParam(name = "unitCount", defaultValue = "20") int unitCount) {
 
         // 토픽 서비스에서 ID 조회 (ids?names=...)
         TopicIdsApiResponse topicIdsResp = topicClient.get()
@@ -78,10 +85,12 @@ public class DevQuizSeedController {
             Long topicId = topicIds.get(i);
 
             for (QuizLevel level : QuizLevel.values()) {
-                for (QuizType type : QuizType.values()) {
+                for (Map.Entry<QuizType, Integer> entry : TYPE_WEIGHTS.entrySet()) {
+                    QuizType type = entry.getKey();
+                    int target = unitCount * entry.getValue();
                     long existing = quizRepository.countDevSeedByLevelAndTypeAndTopicId(
                             level, type, topicId, DEV_SEED_PREFIX);
-                    int missing = Math.max(0, perCombo - (int) existing);
+                    int missing = Math.max(0, target - (int) existing);
                     for (int seq = (int) existing + 1; seq <= (int) existing + missing; seq++) {
                         toCreate.add(buildQuiz(topicName, topicId, level, type, seq));
                     }

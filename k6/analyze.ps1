@@ -12,7 +12,8 @@
 
 param(
     [string]$SummaryFile = "",
-    [string]$OutputDir   = "k6\results"
+    [string]$OutputDir   = "k6\results",
+    [string]$TargetHost  = $(if ($env:PERF_TARGET_HOST) { $env:PERF_TARGET_HOST } else { "localhost" })
 )
 
 # ── 사전 검증 ─────────────────────────────────────────────
@@ -38,7 +39,7 @@ if (-not (Test-Path $SummaryFile)) {
     exit 1
 }
 
-$ACTUATOR   = "http://localhost:8081/actuator"
+$ACTUATOR   = "http://${TargetHost}:8081/actuator"
 $TIMESTAMP  = Get-Date -Format "yyyyMMdd_HHmmss"
 $REPORT_FILE = "$OutputDir\$TIMESTAMP-report.md"
 

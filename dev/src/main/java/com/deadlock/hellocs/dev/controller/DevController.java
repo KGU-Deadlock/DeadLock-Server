@@ -23,8 +23,8 @@ public class DevController {
 
     @PostMapping("/seed/quiz-bank")
     public ApiResponse<DevSeedService.SeedQuizBankResult> seedQuizBank(
-            @RequestParam(name = "perCombo", defaultValue = "5") int perCombo) {
-        return ApiResponse.onSuccess(devSeedService.seedQuizBank(perCombo));
+            @RequestParam(name = "unitCount", defaultValue = "20") int unitCount) {
+        return ApiResponse.onSuccess(devSeedService.seedQuizBank(unitCount));
     }
 
     @PostMapping("/seed/cs-questions")

@@ -116,7 +116,7 @@ public class DevGradingSeedController {
                                          int d, int quizPerDay, Random rng) {
         List<GradingItem> items = new ArrayList<>(quizPerDay);
         for (int i = 0; i < quizPerDay; i++) {
-            int idx = (int) Math.abs((kakaoId * quizPerDay + (long) d * quizPerDay + i) % pool.size());
+            int idx = rng.nextInt(pool.size());
             QuizAnswerKey key = pool.get(idx);
             boolean isCorrect = rng.nextInt(3) != 0;
             int score = isCorrect ? (10 + rng.nextInt(6)) : 0;

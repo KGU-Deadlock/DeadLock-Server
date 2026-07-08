@@ -44,4 +44,5 @@ src/main/resources/application-docker.yml
 ops/perf/datasets/
 k6/results/
 k6/.perf-profile.json
+k6/.hardware-effective.env
 .env.example

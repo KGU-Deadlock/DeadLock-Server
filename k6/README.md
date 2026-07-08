@@ -43,15 +43,19 @@ winget install k6
 
 ### Step 2: 부하테스트 실행 (반복 실행)
 
+RPS 는 단일 목표값이 아니라 **계단식 램프**입니다.
+`StartRps → EndRps` 를 `StepRps` 단위로 올리며 각 스텝을 `StepDuration` 유지 →
+어느 RPS 에서 응답시간이 급등하는지로 한계 지점을 찾습니다.
+
 ```pwsh
-# 기본 실행 (12개 엔드포인트 전체, TargetRps=100)
+# 기본 실행 (12개 엔드포인트 전체, 10→100 RPS, step 10, 2m/step)
 .\k6\run.ps1 -Dataset default
 
-# 전체 믹스 200 RPS
-.\k6\run.ps1 -Dataset default -TargetRps 200
+# 100→500 RPS, 50 단위 램프
+.\k6\run.ps1 -Dataset default -StartRps 100 -EndRps 500 -StepRps 50
 
-# grading 모듈만 (비율·RPS 그대로)
-.\k6\run.ps1 -Dataset default -Module grading -TargetRps 80
+# grading 모듈만 (격리 모드: grading·비율 재정규화, EndRps 가 grading 전체 RPS)
+.\k6\run.ps1 -Dataset default -Module grading -EndRps 200
 
 # 재실행 — 스택 초기화 생략
 .\k6\run.ps1 -Dataset default -SkipInit
@@ -70,16 +74,25 @@ winget install k6
 | 파라미터 | 기본값 | 설명 |
 |---|---|---|
 | `-Dataset` | `"default"` | 사용할 데이터셋 이름 |
-| `-Module` | `"all"` | `all` / `streak` / `ranking` / `quiz` / `grading` / `user` / `topic` |
-| `-TargetRps` | `100` | 전체 믹스 목표 최대 RPS |
+| `-Module` | `"all"` | `all` / `streak` / `ranking` / `quiz` / `grading` / `user` / `topic` (단일 지정 시 격리 모드) |
+| `-StartRps` | `10` | 램프 시작 RPS |
+| `-EndRps` | `100` | 램프 최대 RPS (한계 탐색 상한) |
+| `-StepRps` | `10` | 스텝당 RPS 증가폭 |
+| `-StepDuration` | `"2m"` | 각 스텝 유지 시간 |
 | `-MaxVus` | `500` | VU 상한 |
-| `-HardwareProfile` | `ops\perf\profiles\hardware.env` | 서비스별 CPU/메모리 한도 |
+| `-HardwareProfile` | `ops/perf/profiles/hardware.env` | 서비스별 CPU/메모리 한도 |
+| `-TargetHost` | `localhost` | 대상 스택 호스트 (외부 서버 시 IP, 또는 `$env:PERF_TARGET_HOST`) |
 | `-Gui` | `"grafana"` | `grafana` / `web` (포트 5665) / `none` (CI) |
 | `-KeepUp` | `false` | 테스트 후 스택 유지 |
-| `-SkipInit` | `false` | 스택 초기화 없이 재실행 |
+| `-SkipInit` | `false` | 스택 초기화(down -v → up) 없이 재실행 |
 | `-Build` | `false` | Gradle bootJar 후 이미지 재빌드 |
 | `-Clean` | `false` | Prometheus·Grafana 수집 데이터 초기화 |
+| `-VerifyOnly` | `false` | 응답 검증만 수행 (부하 없음) |
 | `-Debug` | `false` | 앱 컨테이너 로그 출력 |
+
+> **격리 모드** (`-Module` 단일 지정): 해당 모듈 엔드포인트 비율을 합 100 으로 재정규화하여
+> `StartRps~EndRps` 가 그 모듈 전체 RPS 가 되고, 해당 모듈(+전용 DB)에만 hardware.env 한도를
+> 적용하며 나머지 컨테이너는 무제한(0)으로 둡니다. 단일 모듈 성능을 격리 측정할 때 사용합니다.
 
 ## bake-dataset.ps1 파라미터
 
@@ -87,8 +100,9 @@ winget install k6
 |---|---|---|
 | `-Name` | 필수 | 데이터셋 이름 |
 | `-Build` | `false` | bootJar 재빌드 후 스택 시작 |
-| `-TearDown` | `false` | 완료 후 bake 스택 정리 |
+| `-KeepUp` | `false` | 완료 후 bake 스택 유지 (기본: 완료 시 down -v) |
 | `-DumpOnly` | `false` | 실행 중인 스택에서 덤프만 수행 |
+| `-ShowOutput` | `false` | compose 명령 출력 표시 (평시 억제) |
 
 > 규모·세그먼트 파라미터(users, dpw, share 등)는 **`ops/perf/profiles/dataset.env`** 에서 제어.
 
@@ -196,17 +210,20 @@ k6 시나리오는 **gateway(8080)** 만 호출합니다.
 
 ```
 k6/
-├── run.ps1              ← 부하테스트 실행
+├── run.ps1              ← 부하테스트 실행 (원격 docker 스택 기동 + k6)
 ├── bake-dataset.ps1     ← 데이터셋 생성 (dataset.env 읽어 세그먼트 시딩·덤프)
-├── collect-metrics.ps1  ← 테스트 결과 분석 (k6 summary + Prometheus)
-├── all.js               ← 12개 엔드포인트 통합 실행
+├── collect-metrics.ps1  ← 결과 수집 (k6 summary + Prometheus, /analyze 용)
+├── all.js               ← 12개 엔드포인트 통합 실행 (MODULE 필터로 격리)
 ├── lib/
 │   ├── auth.js          # 토큰 풀 생성 (세그먼트별 kakaoId 블록 슬라이싱)
-│   ├── config.js        # 환경변수 → 설정값
+│   ├── config.js        # 환경변수(START/END/STEP_RPS 등) → 설정값
 │   ├── endpoints.js     # 12개 엔드포인트 레지스트리
 │   ├── init.js          # WireMock 체크·AI 라우팅 검증
-│   ├── profile.js       # 세그먼트·비율 동적 구성
-│   └── validators.js    # 응답 검증 헬퍼 (3단계 정책)
-├── scenarios/           # 모듈별 시나리오
+│   ├── profile.js       # profile.json(비율·토큰풀) 동적 구성
+│   └── validators.js    # 응답 검증 헬퍼
+├── .perf-profile.json   # run.ps1 이 생성 (endpoints/tokenPool/dataset) — all.js 가 읽음
 └── results/             # 테스트 결과 저장 (gitignore)
 ```
+
+> 부하 스택은 `wsl docker compose` 로 활성 docker 컨텍스트(원격 `ssh://perf-server` 또는 로컬)에
+> 기동됩니다. 데이터셋은 원격 상주 named volume `hellocs-perf-datasets` 에서 읽습니다.

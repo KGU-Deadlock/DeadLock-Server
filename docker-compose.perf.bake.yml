@@ -41,8 +41,9 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
-    volumes:
-      - ./ops/rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
+    command: >
+      sh -c "echo '[rabbitmq_management,rabbitmq_prometheus].' > /etc/rabbitmq/enabled_plugins
+      && rabbitmq-server"
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "ping"]
       <<: *infra-health
@@ -53,6 +54,7 @@ services:
     command: ["redis-server", "--appendonly", "no", "--save", ""]
     volumes:
       - redis-bake-data:/data
+      - perf-datasets:/perf-datasets-out   # bake 덤프 출력 (원격 상주 named volume)
     depends_on:
       redis-seeder:
         condition: service_completed_successfully
@@ -67,6 +69,7 @@ services:
       MONGO_INITDB_DATABASE: ${MONGO_DB}
     volumes:
       - mongo-bake-data:/data/db
+      - perf-datasets:/perf-datasets-out   # bake 덤프 출력 (원격 상주 named volume)
     healthcheck:
       test: ["CMD-SHELL", "mongosh --quiet --eval \"db.adminCommand('ping').ok\" | grep -q 1"]
       interval: 10s
@@ -88,6 +91,7 @@ services:
       - postgres-user-bake-data:/var/lib/postgresql/data
       - ./ops/postgres/init:/docker-entrypoint-initdb.d:ro
       - ./ops/perf/datasets:/perf-datasets:ro
+      - perf-datasets:/perf-datasets-out   # bake 덤프 출력 (원격 상주 named volume)
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${USER_POSTGRES_DB}"]
       <<: *infra-health
@@ -105,6 +109,7 @@ services:
       - postgres-topic-bake-data:/var/lib/postgresql/data
       - ./ops/postgres/init:/docker-entrypoint-initdb.d:ro
       - ./ops/perf/datasets:/perf-datasets:ro
+      - perf-datasets:/perf-datasets-out   # bake 덤프 출력 (원격 상주 named volume)
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${TOPIC_POSTGRES_DB}"]
       <<: *infra-health
@@ -122,6 +127,7 @@ services:
       - postgres-quiz-bake-data:/var/lib/postgresql/data
       - ./ops/postgres/init:/docker-entrypoint-initdb.d:ro
       - ./ops/perf/datasets:/perf-datasets:ro
+      - perf-datasets:/perf-datasets-out   # bake 덤프 출력 (원격 상주 named volume)
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${QUIZ_POSTGRES_DB}"]
       <<: *infra-health
@@ -512,3 +518,8 @@ volumes:
   postgres-topic-bake-data:
   postgres-quiz-bake-data:
   postgres-interview-bake-data:
+  # 동적 데이터셋 — 원격 데몬에 상주하는 외부 볼륨. bake 가 기록, run.ps1 이 소비.
+  # 생성: docker volume create hellocs-perf-datasets (bake-dataset.ps1 / run.ps1 이 자동 수행)
+  perf-datasets:
+    name: hellocs-perf-datasets
+    external: true
